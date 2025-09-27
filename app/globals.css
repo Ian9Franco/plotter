@@ -1,11 +1,11 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+/* globals.css */
+
+/* Tailwind base (si usás Tailwind) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@custom-variant dark (&:is(.dark *));
 
-@import "tw-animate-css/dist/tw-animate.min.css";
+/* Animaciones opcionales */
 
 :root {
   /* Updated color palette to black theme with Phthalo Green accents */
@@ -120,102 +120,78 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-    /* Adding background pattern for glassmorphism effect */
-    background-image: radial-gradient(circle at 20% 50%, rgba(0, 255, 135, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(0, 255, 135, 0.05) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
-    background-attachment: fixed;
-  }
+/* Estilos base para body y fondo */
+body {
+  @apply bg-background text-foreground;
+  font-family: 'Inter', sans-serif;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(0, 255, 135, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 255, 135, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  background-attachment: fixed;
+  margin: 0;
+  padding: 0;
 }
 
-/* Enhanced animations and glassmorphism effects */
+
+/* Animaciones */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.fade-in {
-  animation: fadeIn 0.6s ease-out forwards;
-}
+.fade-in { animation: fadeIn 0.6s ease-out forwards; }
+.slide-in-left { animation: slideInLeft 0.8s ease-out forwards; }
+.slide-in-right { animation: slideInRight 0.8s ease-out forwards; }
 
-.slide-in-left {
-  animation: slideInLeft 0.8s ease-out forwards;
-}
-
-.slide-in-right {
-  animation: slideInRight 0.8s ease-out forwards;
-}
-
-/* Enhanced glass effects */
+/* Glassmorphism effects */
 .glass-effect {
   backdrop-filter: blur(20px) saturate(180%);
   background: rgba(17, 17, 17, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .glass-card {
   backdrop-filter: blur(15px) saturate(150%);
   background: rgba(26, 26, 26, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
+/* Hero banner */
 .hero-banner {
   backdrop-filter: blur(10px);
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(26, 26, 26, 0.6) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(26,26,26,0.6) 100%);
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* Category button styles */
+/* Category buttons */
 .category-btn {
   backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .category-btn:hover {
-  background: rgba(0, 255, 135, 0.1);
-  border-color: rgba(0, 255, 135, 0.3);
+  background: rgba(0,255,135,0.1);
+  border-color: rgba(0,255,135,0.3);
   transform: translateY(-2px);
 }
 
 .category-btn.active {
-  background: rgba(0, 255, 135, 0.2);
-  border-color: rgba(0, 255, 135, 0.5);
+  background: rgba(0,255,135,0.2);
+  border-color: rgba(0,255,135,0.5);
 }
