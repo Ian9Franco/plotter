@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 @custom-variant dark (&:is(.dark *));
+
+@import "tw-animate-css/dist/tw-animate.min.css";
 
 :root {
   /* Updated color palette to black theme with Phthalo Green accents */
