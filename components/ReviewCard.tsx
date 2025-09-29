@@ -5,8 +5,13 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Download, Edit3, Save, X } from "lucide-react"
+import { Download, CreditCard as Edit3, Save, X } from "lucide-react"
 import { getImageUrl } from "@/lib/tmdb"
+
+/**
+ * Enhanced ReviewCard component with improved export functionality
+ * Supports both server-side and client-side export methods with fallback
+ */
 
 interface ReviewCardProps {
   movie: {
@@ -34,8 +39,7 @@ export default function ReviewCard({
   const [currentRating, setCurrentRating] = useState(rating)
   const [currentReview, setCurrentReview] = useState(reviewText)
   const [currentName, setCurrentName] = useState(reviewerName)
-  const [posterBase64, setPosterBase64] = useState<string | null>(null)
-  const [isLoadingPoster, setIsLoadingPoster] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const reviewCardRef = useRef<HTMLDivElement>(null)
 
   const contentTitle = movie.title || movie.name || "Sin título"
@@ -45,6 +49,11 @@ export default function ReviewCard({
   const hasReview = currentReview.trim().length > 0
   const shouldShowExpanded = isEditing || hasReview
 
+  /**
+   * Renders star rating display with interactive editing capability
+   * @param rating - Current rating value (1-5)
+   * @param interactive - Whether stars are clickable for editing
+   */
   const renderStars = (rating: number, interactive = false) => {
     return Array.from({ length: 5 }, (_, i) => (
       <button
@@ -61,6 +70,10 @@ export default function ReviewCard({
     ))
   }
 
+  /**
+   * Calculates dynamic card height based on review content length
+   * Ensures proper layout for both compact and expanded states
+   */
   const getCardHeight = () => {
     if (!shouldShowExpanded) return 280 // Compact mode - just stars
     const baseHeight = 400
@@ -68,129 +81,6 @@ export default function ReviewCard({
     const additionalHeight = Math.max(0, Math.floor(textLength / 60) * 25)
     return Math.min(baseHeight + additionalHeight, 650)
   }
-
-  const drawTextOnCanvas = (
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    x: number,
-    y: number,
-    maxWidth: number,
-    lineHeight: number,
-  ) => {
-    const words = text.split(" ")
-    let line = ""
-    let currentY = y
-
-    for (const word of words) {
-      const testLine = line + word + " "
-      const metrics = ctx.measureText(testLine)
-      if (metrics.width > maxWidth && line !== "") {
-        ctx.fillText(line, x, currentY)
-        line = word + " "
-        currentY += lineHeight
-      } else {
-        line = testLine
-      }
-    }
-    if (line) {
-      ctx.fillText(line, x, currentY)
-      currentY += lineHeight
-    }
-    return currentY
-  }
-
-  const loadPosterBase64 = async () => {
-    if (!movie.poster_path) {
-      setPosterBase64(null)
-      return
-    }
-
-    setIsLoadingPoster(true)
-    try {
-      const imageUrl = getImageUrl(movie.poster_path, "w500")
-
-      // Try direct fetch first with proper CORS handling
-      let response: Response | null = null
-
-      try {
-        response = await fetch(imageUrl, {
-          mode: "cors",
-          headers: {
-            Accept: "image/*",
-            "User-Agent": "Mozilla/5.0 (compatible; MovieBox/1.0)",
-          },
-        })
-      } catch (corsError) {
-        console.log("[v0] CORS failed, trying alternative approach:", corsError)
-      }
-
-      // If direct fetch fails, create a canvas-based approach
-      if (!response || !response.ok) {
-        console.log("[v0] Direct fetch failed, using Image element approach")
-
-        const img = new window.Image()
-        img.crossOrigin = "anonymous"
-
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("Timeout loading image"))
-          }, 10000)
-
-          img.onload = () => {
-            clearTimeout(timeout)
-            try {
-              const canvas = document.createElement("canvas")
-              const ctx = canvas.getContext("2d")
-              if (!ctx) throw new Error("No canvas context")
-
-              canvas.width = img.width
-              canvas.height = img.height
-              ctx.drawImage(img, 0, 0)
-
-              const dataURL = canvas.toDataURL("image/png")
-              resolve(dataURL)
-            } catch (error) {
-              reject(error)
-            }
-          }
-
-          img.onerror = () => {
-            clearTimeout(timeout)
-            reject(new Error("Failed to load image"))
-          }
-
-          img.src = imageUrl
-        })
-
-        setPosterBase64(base64)
-        setIsLoadingPoster(false)
-        return
-      }
-
-      // If direct fetch succeeded, convert to base64
-      const blob = await response.blob()
-      const reader = new FileReader()
-
-      reader.onloadend = () => {
-        setPosterBase64(reader.result as string)
-        setIsLoadingPoster(false)
-      }
-      reader.onerror = () => {
-        console.error("[v0] FileReader error")
-        setPosterBase64(null)
-        setIsLoadingPoster(false)
-      }
-      reader.readAsDataURL(blob)
-    } catch (error) {
-      console.error("[v0] Error loading poster:", error)
-      setPosterBase64(null)
-      setIsLoadingPoster(false)
-    }
-  }
-
-  useEffect(() => {
-    loadPosterBase64()
-  }, [movie.poster_path])
 
   const handleSave = () => setIsEditing(false)
 
@@ -201,163 +91,98 @@ export default function ReviewCard({
     setIsEditing(false)
   }
 
-  const downloadReviewCanvas = async () => {
-    if (isLoadingPoster) {
-      alert("Esperando a que se cargue el póster...")
+  /**
+   * Enhanced export function with server-side rendering and client-side fallback
+   * Prioritizes server-side export for better quality and consistency
+   */
+  const downloadReview = async () => {
+    if (isExporting) {
       return
     }
 
+    setIsExporting(true)
+
     try {
-      console.log("[v0] Starting download process")
-      const canvas = document.createElement("canvas")
-      const baseWidth = 400
-      const baseHeight = hasReview ? 380 : 300
-      const textHeight = hasReview ? Math.max(80, Math.min(currentReview.length * 0.5, 120)) : 0
-      const totalHeight = baseHeight + textHeight
+      console.log("[ReviewCard] Starting server-side export")
+      
+      // Prepare export data for server-side rendering
+      const exportData = {
+        movieId: movie.id,
+        title: contentTitle,
+        posterUrl: movie.poster_path ? getImageUrl(movie.poster_path, "original") : "",
+        backdropUrl: movie.backdrop_path ? getImageUrl(movie.backdrop_path, "original") : "",
+        rating: currentRating,
+        reviewText: currentReview,
+        reviewerName: currentName,
+        releaseDate: releaseDate,
+        width: 440,
+        height: getCardHeight() + 100
+      }
 
-      canvas.width = baseWidth * 2
-      canvas.height = totalHeight * 2
-      const ctx = canvas.getContext("2d")
-      if (!ctx) throw new Error("No se pudo obtener el contexto del canvas")
-
-      ctx.scale(2, 2)
-
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, baseWidth, totalHeight)
-      gradient.addColorStop(0, "#4a5568")
-      gradient.addColorStop(1, "#2d3748")
-      ctx.fillStyle = gradient
-      ctx.beginPath()
-      ctx.roundRect(0, 80, baseWidth, totalHeight - 80, 20)
-      ctx.fill()
-
-      const posterWidth = 120
-      const posterHeight = 180
-      const posterX = baseWidth / 2 - posterWidth / 2
-      const posterY = 0
-
-      console.log("[v0] Loading poster for canvas, posterBase64 available:", !!posterBase64)
-
-      if (posterBase64) {
-        // Use the pre-loaded base64 image
-        const poster = new window.Image()
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            console.log("[v0] Poster load timeout, using fallback")
-            reject(new Error("Timeout loading poster"))
-          }, 5000)
-
-          poster.onload = () => {
-            clearTimeout(timeout)
-            try {
-              console.log("[v0] Poster loaded successfully, drawing to canvas")
-              ctx.save()
-              ctx.beginPath()
-              ctx.roundRect(posterX, posterY, posterWidth, posterHeight, 12)
-              ctx.clip()
-              ctx.drawImage(poster, posterX, posterY, posterWidth, posterHeight)
-              ctx.restore()
-              resolve()
-            } catch (error) {
-              console.error("[v0] Error drawing poster:", error)
-              // Draw placeholder rectangle if image fails
-              ctx.fillStyle = "#4a5568"
-              ctx.fillRect(posterX, posterY, posterWidth, posterHeight)
-              resolve()
-            }
-          }
-
-          poster.onerror = () => {
-            clearTimeout(timeout)
-            console.log("[v0] Poster load error, using fallback")
-            // Draw placeholder rectangle
-            ctx.fillStyle = "#4a5568"
-            ctx.fillRect(posterX, posterY, posterWidth, posterHeight)
-            resolve()
-          }
-
-          poster.src = posterBase64
+      // Try server-side export first
+      try {
+        const response = await fetch('/api/export-review', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(exportData)
         })
-      } else {
-        console.log("[v0] No posterBase64 available, drawing placeholder")
-        // Draw placeholder rectangle
-        ctx.fillStyle = "#4a5568"
-        ctx.fillRect(posterX, posterY, posterWidth, posterHeight)
 
-        // Add "No Image" text
-        ctx.fillStyle = "#a0aec0"
-        ctx.font = "12px sans-serif"
-        ctx.textAlign = "center"
-        ctx.fillText("Sin imagen", posterX + posterWidth / 2, posterY + posterHeight / 2)
+        if (response.ok) {
+          const blob = await response.blob()
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `review-${contentTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+          
+          console.log("[ReviewCard] Server-side export successful")
+          return
+        } else {
+          console.warn("[ReviewCard] Server-side export failed, falling back to client-side")
+        }
+      } catch (serverError) {
+        console.warn("[ReviewCard] Server-side export error:", serverError)
       }
 
-      // Title and year
-      ctx.fillStyle = "#fff"
-      ctx.font = "bold 20px sans-serif"
-      ctx.textAlign = "center"
-      ctx.fillText(contentTitle, baseWidth / 2, 220)
-
-      ctx.font = "16px sans-serif"
-      ctx.fillStyle = "#a0aec0"
-      const yearText = releaseDate ? new Date(releaseDate).getFullYear().toString() : "N/A"
-      ctx.fillText(yearText, baseWidth / 2, 245)
-
-      // Stars
-      for (let i = 0; i < 5; i++) {
-        ctx.fillStyle = i < currentRating ? "#48bb78" : "#4a5568"
-        ctx.font = "28px sans-serif"
-        ctx.fillText("★", baseWidth / 2 - 60 + i * 30, 280)
+      // Fallback to client-side export using html-to-image
+      console.log("[ReviewCard] Using client-side fallback export")
+      
+      if (!reviewCardRef.current) {
+        throw new Error("Review card element not found")
       }
 
-      let currentY = 300
-
-      // Review text
-      if (hasReview) {
-        ctx.strokeStyle = "#4a5568"
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(60, currentY)
-        ctx.lineTo(baseWidth - 60, currentY)
-        ctx.stroke()
-
-        currentY += 30
-        ctx.fillStyle = "#e2e8f0"
-        ctx.font = "14px sans-serif"
-        ctx.textAlign = "center"
-
-        currentY = drawTextOnCanvas(ctx, currentReview, baseWidth / 2, currentY, baseWidth - 60, 22)
-        currentY += 20
-      } else {
-        currentY += 20
-      }
-
-      // Reviewer name
-      ctx.font = "14px sans-serif"
-      ctx.fillStyle = "#a0aec0"
-      ctx.textAlign = "center"
-      const reviewByText = "Review by "
-      const reviewByWidth = ctx.measureText(reviewByText).width
-      const totalWidth = reviewByWidth + ctx.measureText(currentName).width
-      const startX = baseWidth / 2 - totalWidth / 2
-
-      ctx.fillText(reviewByText, startX + reviewByWidth / 2, currentY)
-      ctx.font = "bold 14px sans-serif"
-      ctx.fillStyle = "#fff"
-      ctx.fillText(currentName, startX + reviewByWidth + ctx.measureText(currentName).width / 2, currentY)
-
-      console.log("[v0] Canvas ready, starting download")
-      // Download
-      const dataURL = canvas.toDataURL("image/png", 1.0)
+      // Dynamic import to avoid SSR issues
+      const { toPng } = await import('html-to-image')
+      
+      const dataUrl = await toPng(reviewCardRef.current, {
+        quality: 1.0,
+        pixelRatio: 2,
+        backgroundColor: 'transparent',
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        }
+      })
+      
       const link = document.createElement("a")
       link.download = `review-${contentTitle.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.png`
-      link.href = dataURL
+      link.href = dataUrl
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      console.log("[v0] Download completed successfully")
+      
+      console.log("[ReviewCard] Client-side export completed")
+      
     } catch (error) {
-      console.error("[v0] Error downloading review:", error)
-      alert("Hubo un error al descargar la imagen. Por favor, inténtalo de nuevo.")
+      console.error("[ReviewCard] Export failed:", error)
+      alert("Error al exportar la imagen. Por favor, inténtalo de nuevo.")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -376,14 +201,14 @@ export default function ReviewCard({
               Editar
             </Button>
             <Button
-              onClick={downloadReviewCanvas}
+              onClick={downloadReview}
               variant="outline"
               size="sm"
               className="bg-primary/20 border-primary/30 text-primary hover:bg-primary/30"
-              disabled={isLoadingPoster}
+              disabled={isExporting}
             >
               <Download className="w-4 h-4 mr-2" />
-              {isLoadingPoster ? "Cargando..." : "Descargar"}
+              {isExporting ? "Exportando..." : "Descargar"}
             </Button>
           </>
         ) : (
@@ -409,25 +234,16 @@ export default function ReviewCard({
         {/* Poster */}
         <div className="relative z-20 flex justify-center">
           <div className="w-30 h-45 rounded-xl overflow-hidden shadow-2xl border-4 border-white">
-            {isLoadingPoster ? (
-              <div className="bg-gray-800 flex items-center justify-center" style={{ width: "120px", height: "180px" }}>
-                <div className="flex flex-col items-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
-                  <span className="text-gray-400 text-xs text-center">Cargando...</span>
-                </div>
-              </div>
-            ) : (
-              <img
-                src={posterUrl || "/placeholder.svg"}
-                alt={contentTitle}
-                className="w-full h-full object-cover"
-                style={{ width: "120px", height: "180px" }}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.src = "/movie-poster-placeholder.png"
-                }}
-              />
-            )}
+            <img
+              src={posterUrl || "/placeholder.svg"}
+              alt={contentTitle}
+              className="w-full h-full object-cover"
+              style={{ width: "120px", height: "180px" }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = "/movie-poster-placeholder.png"
+              }}
+            />
           </div>
         </div>
 
