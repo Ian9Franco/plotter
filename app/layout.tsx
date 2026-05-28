@@ -2,6 +2,7 @@ import type React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Outfit } from 'next/font/google'
 import './globals.css'
+import { ThemeProvider } from '@/components/theme-provider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -45,7 +46,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${outfit.variable}`}>
       <body className={`font-sans antialiased`}>
-        {children}
+        <ThemeProvider attribute="data-theme" defaultTheme="modern" themes={['modern', 'coffee']}>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

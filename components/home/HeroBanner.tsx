@@ -1,141 +1,122 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { getBackdropUrl, getPosterUrl } from '@/lib/tmdb/client'
-import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
-import type { MediaItem } from '@/lib/tmdb/types'
-import { Star, Calendar, Film, Tv, ChevronRight } from 'lucide-react'
+import { getBackdropUrl } from '@/lib/tmdb/client'
+import { getTitle, isMovie, getReleaseYear } from '@/lib/tmdb/types'
+import type { MediaItem, WatchProviders as WatchProvidersType } from '@/lib/tmdb/types'
+import { getMovieWatchProviders } from '@/lib/tmdb/movies'
+import { getTVWatchProviders } from '@/lib/tmdb/tv'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Star, Calendar } from 'lucide-react'
+import { WatchProviders } from '@/components/ui/WatchProviders'
+import { useState, useEffect } from 'react'
 
 interface HeroBannerProps {
-  items: MediaItem[]
+  item: MediaItem
 }
 
-export default function HeroBanner({ items }: HeroBannerProps) {
+export default function HeroBanner({ item }: HeroBannerProps) {
   const router = useRouter()
-  const [current, setCurrent] = useState(0)
-  const [fading, setFading]   = useState(false)
 
-  const goTo = useCallback((index: number) => {
-    if (index === current) return
-    setFading(true)
-    setTimeout(() => {
-      setCurrent(index)
-      setFading(false)
-    }, 300)
-  }, [current])
+  if (!item) return <HeroBannerSkeleton />
 
-  // Autoplay every 6s
-  useEffect(() => {
-    if (items.length < 2) return
-    const id = setInterval(() => {
-      goTo((current + 1) % items.length)
-    }, 6000)
-    return () => clearInterval(id)
-  }, [current, items.length, goTo])
-
-  if (!items.length) return <HeroBannerSkeleton />
-
-  const item       = items[current]
   const title      = getTitle(item)
-  const year       = getReleaseYear(item)
   const type       = isMovie(item) ? 'movie' : 'tv'
-  const backdropUrl= getBackdropUrl(item.backdrop_path, 'w1280')
-  const overview   = item.overview?.slice(0, 140)
+  const backdropUrl = getBackdropUrl(item.backdrop_path, 'w1280')
+  const genres      = item.genre_ids && item.genre_ids.length > 0 ? 'TENDENCIA' : 'SPOTLIGHT'
+  let overview      = item.overview || ''
+  const firstPeriod = overview.indexOf('.')
+  if (firstPeriod !== -1) {
+    overview = overview.substring(0, firstPeriod + 1)
+  }
+  const year        = getReleaseYear(item)
+  const rating     = item.vote_average?.toFixed(1)
+
+  const [providers, setProviders] = useState<WatchProvidersType | null>(null)
+
+  useEffect(() => {
+    if (!item) return
+    let mounted = true
+    const isM = isMovie(item)
+    const fetchProviders = isM ? getMovieWatchProviders : getTVWatchProviders
+
+    fetchProviders(item.id).then(res => {
+      if (mounted) setProviders(res)
+    }).catch(console.error)
+
+    return () => { mounted = false; setProviders(null) }
+  }, [item])
 
   const handleCTA = () => router.push(`/${type}/${item.id}`)
 
   return (
-    <section className="relative h-[55vh] min-h-[340px] max-h-[480px] overflow-hidden">
-      {/* Backdrop */}
-      <div
-        className={`absolute inset-0 transition-opacity duration-500 ${fading ? 'opacity-0' : 'opacity-100'}`}
-      >
-        {backdropUrl ? (
-          <img
-            src={backdropUrl}
-            alt={title}
-            className="w-full h-full object-cover object-top"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800" />
-        )}
-      </div>
-
-      {/* Overlays */}
-      <div className="absolute inset-0 hero-overlay" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-
-      {/* Content */}
-      <div className={`absolute inset-0 flex flex-col justify-end p-5 pb-6 transition-all duration-500 ${fading ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
-        {/* Type badge */}
-        <div className="mb-2">
-          <span className={`badge ${type === 'movie' ? 'badge-movie' : 'badge-tv'}`}>
-            {type === 'movie'
-              ? <><Film className="w-2.5 h-2.5" />Película</>
-              : <><Tv className="w-2.5 h-2.5" />Serie</>
-            }
-          </span>
-        </div>
-
-        {/* Title */}
-        <h1 className="font-['Outfit'] font-black text-2xl sm:text-3xl text-white leading-tight mb-1 max-w-xs">
-          {title}
-        </h1>
-
-        {/* Meta */}
-        <div className="flex items-center gap-3 text-xs text-gray-300 mb-2">
-          <span className="flex items-center gap-1">
-            <Star className="w-3 h-3 text-[var(--plotter-orange)] fill-current" />
-            {item.vote_average.toFixed(1)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            {year}
-          </span>
-        </div>
-
-        {/* Overview */}
-        {overview && (
-          <p className="text-gray-400 text-xs leading-relaxed mb-3 max-w-xs line-clamp-2">
-            {overview}…
-          </p>
-        )}
-
-        {/* CTA */}
-        <button
-          id={`hero-cta-${type}-${item.id}`}
-          onClick={handleCTA}
-          className="btn-primary self-start text-sm py-2.5 px-5"
+    <section 
+      className="relative w-full h-[80vh] min-h-[600px] max-h-[900px] overflow-hidden cursor-pointer"
+      onClick={handleCTA}
+    >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={item.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1 }}
+          className="absolute inset-0"
         >
-          Ver detalles
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Dots */}
-      {items.length > 1 && (
-        <div className="absolute bottom-4 right-4 flex gap-1.5 z-10">
-          {items.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className={`transition-all duration-300 rounded-full ${
-                i === current
-                  ? 'w-5 h-1.5 bg-[var(--plotter-orange)]'
-                  : 'w-1.5 h-1.5 bg-white/30 hover:bg-white/50'
-              }`}
-              aria-label={`Ir al ítem ${i + 1}`}
+          {backdropUrl ? (
+            <img
+              src={backdropUrl}
+              alt={title}
+              className="w-full h-full object-cover object-top"
             />
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="w-full h-full bg-gray-800" />
+          )}
+
+          {/* Gradients for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--plotter-black)] via-transparent to-transparent opacity-80" />
+
+          {/* Info Content at the TOP */}
+          <div className="absolute inset-0 flex flex-col justify-start px-6 md:px-16 pt-[100px] md:pt-[120px] max-w-[1400px] mx-auto w-full pointer-events-none">
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="max-w-2xl"
+            >
+              <span className="text-xs md:text-sm font-black tracking-[0.2em] text-[var(--plotter-orange)] uppercase mb-2 block drop-shadow-md">
+                {type === 'movie' ? 'PELÍCULA' : 'SERIE'} • {genres}
+              </span>
+              
+              <h1 className="font-['Outfit'] font-black text-4xl md:text-6xl text-white leading-tight line-clamp-2 drop-shadow-xl mb-3">
+                {title}
+              </h1>
+              
+              <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm text-white/90 font-medium mb-4 drop-shadow-md">
+                <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-[var(--plotter-orange)] fill-[var(--plotter-orange)]" /> {rating}</span>
+                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {year}</span>
+                
+                <div onClick={(e) => e.stopPropagation()} className="pl-4 border-l border-white/20">
+                  <WatchProviders providers={providers} />
+                </div>
+              </div>
+              
+              {overview && (
+                <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl drop-shadow-md">
+                  {overview.includes('.') ? overview.substring(0, overview.indexOf('.') + 1) : overview}
+                </p>
+              )}
+            </motion.div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </section>
   )
 }
 
 function HeroBannerSkeleton() {
   return (
-    <div className="h-[55vh] min-h-[340px] max-h-[480px] skeleton" />
+    <div className="h-[80vh] min-h-[600px] max-h-[900px] w-full skeleton" />
   )
 }

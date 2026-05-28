@@ -18,7 +18,7 @@ export default function MobileNav() {
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 px-4 pb-5 md:hidden pointer-events-none select-none">
       <nav
-        className="w-full max-w-[400px] mx-auto pointer-events-auto bg-[var(--plotter-card)] backdrop-blur-xl border border-white/[0.06] rounded-[28px] nm-raised-lg"
+        className="w-full max-w-[400px] mx-auto pointer-events-auto bg-[var(--plotter-surface)]/60 backdrop-blur-2xl border border-white/[0.08] rounded-[28px] shadow-2xl"
         aria-label="Navegación principal móvil"
       >
         <div className="flex items-center justify-around h-[62px] px-1 relative">

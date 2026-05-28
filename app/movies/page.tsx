@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import MobileNav from '@/components/layout/MobileNav'
 import Footer from '@/components/layout/Footer'
@@ -35,9 +35,11 @@ export default function MoviesPage() {
 
   return (
     <div className="min-h-dvh bg-[var(--plotter-black)]">
-      <Navbar />
+      <Suspense fallback={<div className="h-20" />}>
+        <Navbar />
+      </Suspense>
 
-      <main className="page-content pt-20">
+      <main className="page-content pt-20 max-w-[1400px] mx-auto w-full">
         {/* Page Header */}
         <div className="px-4 mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -52,6 +54,20 @@ export default function MoviesPage() {
                 Descubrí las últimas tendencias del cine
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="px-4 mb-6">
+          <div className="flex flex-wrap gap-2 pb-2">
+            {['Todo', 'Acción', 'Aventura', 'Comedia', 'Drama', 'Terror', 'Ciencia Ficción'].map(tab => (
+              <button
+                key={tab}
+                className={`chip shrink-0 ${tab === 'Todo' ? 'chip-active' : ''}`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -97,7 +113,9 @@ export default function MoviesPage() {
       </main>
 
       <Footer />
-      <MobileNav />
+      <Suspense fallback={null}>
+        <MobileNav />
+      </Suspense>
     </div>
   )
 }
