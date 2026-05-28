@@ -1,119 +1,129 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from 'next/server'
 
-const TMDB_BASE_URL = "https://api.themoviedb.org/3"
-const BEARER_TOKEN = process.env.TMDB_BEARER_TOKEN // Server-only, no NEXT_PUBLIC prefix
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+const BEARER_TOKEN = process.env.TMDB_BEARER_TOKEN
 
 const headers = {
   Authorization: `Bearer ${BEARER_TOKEN}`,
-  accept: "application/json",
+  accept: 'application/json',
 }
 
-async function makeApiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
+async function tmdb(endpoint: string, init: RequestInit = {}): Promise<any> {
   try {
-    const response = await fetch(`${TMDB_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: { ...headers, ...options.headers },
+    const res = await fetch(`${TMDB_BASE_URL}${endpoint}`, {
+      ...init,
+      headers: { ...headers, ...(init.headers as Record<string, string> || {}) },
     })
-    if (!response.ok) throw new Error(`API call failed: ${response.status}`)
-    return await response.json()
-  } catch (error) {
-    console.error("TMDB API Error:", error)
+    if (!res.ok) throw new Error(`TMDB ${res.status}: ${endpoint}`)
+    return res.json()
+  } catch (err) {
+    console.error('[TMDB Route]', err)
     return { results: [] }
   }
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const action = searchParams.get("action")
-  const query = searchParams.get("query")
-  const type = searchParams.get("type") || "all"
-  const genreId = searchParams.get("genreId")
-  const id = searchParams.get("id")
+  const sp = new URL(request.url).searchParams
+  const action  = sp.get('action')
+  const query   = sp.get('query')
+  const type    = sp.get('type') || 'all'
+  const genreId = sp.get('genreId')
+  const id      = sp.get('id')
+  const cache1h = { next: { revalidate: 3600 } }
 
   try {
     switch (action) {
-      case "search":
-        if (!query) {
-          return NextResponse.json({ error: "Query parameter required" }, { status: 400 })
-        }
-        const endpoint = type === "movie" ? "/search/movie" : type === "tv" ? "/search/tv" : "/search/multi"
-        const searchData = await makeApiCall(`${endpoint}?query=${encodeURIComponent(query)}&language=es-ES&page=1`)
-        return NextResponse.json(searchData.results?.filter((item: any) => item.media_type !== "person") || [])
 
-      case "trending":
-        const trendingData = await makeApiCall(`/trending/${type}/day?language=es-ES`, { next: { revalidate: 3600 } })
-        return NextResponse.json(trendingData.results?.slice(0, 22) || [])
+      /* ─── Search ─────────────────────────────────────────────── */
+      case 'search': {
+        if (!query) return NextResponse.json({ error: 'query required' }, { status: 400 })
+        const ep = type === 'movie' ? '/search/movie'
+                 : type === 'tv'    ? '/search/tv'
+                                    : '/search/multi'
+        const data = await tmdb(`${ep}?query=${encodeURIComponent(query)}&language=es-ES&page=1`)
+        const results = (data.results || []).filter((i: any) => i.media_type !== 'person')
+        return NextResponse.json(results)
+      }
 
-      case "top-rated-theaters":
-        const theatersData = await makeApiCall("/movie/now_playing?language=en-US&page=1", {
-          next: { revalidate: 3600 },
-        })
-        if (!theatersData.results || theatersData.results.length === 0) {
-          return NextResponse.json(null)
-        }
-        const filteredTheaters = theatersData.results.filter((movie: any) => movie.original_language !== "zh")
-        const sortedTheaters = filteredTheaters.sort((a: any, b: any) => b.vote_average - a.vote_average)
-        return NextResponse.json(sortedTheaters[0] || null)
+      /* ─── Trending ───────────────────────────────────────────── */
+      case 'trending': {
+        const data = await tmdb(`/trending/${type}/day?language=es-ES`, cache1h)
+        return NextResponse.json(data.results?.slice(0, 22) || [])
+      }
 
-      case "top-rated-air":
-        const airData = await makeApiCall("/tv/on_the_air?language=en-US&page=1", { next: { revalidate: 3600 } })
-        if (!airData.results || airData.results.length === 0) {
-          return NextResponse.json(null)
-        }
-        const filteredAir = airData.results.filter((show: any) => show.original_language !== "zh")
-        const sortedAir = filteredAir.sort((a: any, b: any) => b.vote_average - a.vote_average)
-        return NextResponse.json(sortedAir[0] || null)
+      /* ─── Now Playing (Hero movie) ───────────────────────────── */
+      case 'top-rated-theaters': {
+        const data = await tmdb('/movie/now_playing?language=en-US&page=1', cache1h)
+        const sorted = (data.results || [])
+          .filter((m: any) => m.original_language !== 'zh')
+          .sort((a: any, b: any) => b.vote_average - a.vote_average)
+        return NextResponse.json(sorted[0] || null)
+      }
 
-      case "discover-movies":
-        if (!genreId) {
-          return NextResponse.json({ error: "GenreId parameter required" }, { status: 400 })
-        }
-        const moviesData = await makeApiCall(
-          `/discover/movie?with_genres=${genreId}&language=es-ES&page=1&sort_by=popularity.desc`,
-          { next: { revalidate: 3600 } },
-        )
-        return NextResponse.json(moviesData.results?.slice(0, 22) || [])
+      /* ─── On Air (Hero TV) ───────────────────────────────────── */
+      case 'top-rated-air': {
+        const data = await tmdb('/tv/on_the_air?language=en-US&page=1', cache1h)
+        const sorted = (data.results || [])
+          .filter((s: any) => s.original_language !== 'zh')
+          .sort((a: any, b: any) => b.vote_average - a.vote_average)
+        return NextResponse.json(sorted[0] || null)
+      }
 
-      case "discover-tv":
-        if (!genreId) {
-          return NextResponse.json({ error: "GenreId parameter required" }, { status: 400 })
-        }
-        const tvData = await makeApiCall(
-          `/discover/tv?with_genres=${genreId}&language=es-ES&page=1&sort_by=popularity.desc`,
-          { next: { revalidate: 3600 } },
-        )
-        return NextResponse.json(tvData.results?.slice(0, 22) || [])
+      /* ─── Movie Details ──────────────────────────────────────── */
+      case 'movie-details': {
+        if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+        const data = await tmdb(`/movie/${id}?language=es-ES`, cache1h)
+        return NextResponse.json(data)
+      }
 
-      case "watch-providers":
-        if (!id || !type) {
-          return NextResponse.json({ error: "ID and type parameters required" }, { status: 400 })
-        }
-        const providersData = await makeApiCall(`/${type}/${id}/watch/providers`, { next: { revalidate: 3600 } })
-        // Return providers for US market (most comprehensive)
-        return NextResponse.json(providersData.results?.US || null)
+      /* ─── TV Details ─────────────────────────────────────────── */
+      case 'tv-details': {
+        if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+        const data = await tmdb(`/tv/${id}?language=es-ES`, cache1h)
+        return NextResponse.json(data)
+      }
 
-      case "videos":
-        if (!id || !type) {
-          return NextResponse.json({ error: "ID and type parameters required" }, { status: 400 })
-        }
-        const videosData = await makeApiCall(`/${type}/${id}/videos?language=en-US`, { next: { revalidate: 3600 } })
-        // Filter for trailers and teasers, prioritize official ones
-        const trailers =
-          videosData.results
-            ?.filter((video: any) => video.site === "YouTube" && (video.type === "Trailer" || video.type === "Teaser"))
-            .sort((a: any, b: any) => {
-              // Prioritize official trailers
-              if (a.official && !b.official) return -1
-              if (!a.official && b.official) return 1
-              return 0
-            }) || []
+      /* ─── Watch Providers ────────────────────────────────────── */
+      case 'watch-providers': {
+        if (!id || !type) return NextResponse.json({ error: 'id and type required' }, { status: 400 })
+        const data = await tmdb(`/${type}/${id}/watch/providers`, cache1h)
+        return NextResponse.json(data.results?.AR || data.results?.US || null)
+      }
+
+      /* ─── Videos / Trailers ──────────────────────────────────── */
+      case 'videos': {
+        if (!id || !type) return NextResponse.json({ error: 'id and type required' }, { status: 400 })
+        const data = await tmdb(`/${type}/${id}/videos?language=en-US`, cache1h)
+        const trailers = (data.results || [])
+          .filter((v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+          .sort((a: any, b: any) => (a.official === b.official ? 0 : a.official ? -1 : 1))
         return NextResponse.json(trailers)
+      }
+
+      /* ─── Discover by genre ──────────────────────────────────── */
+      case 'discover-movies': {
+        if (!genreId) return NextResponse.json({ error: 'genreId required' }, { status: 400 })
+        const data = await tmdb(
+          `/discover/movie?with_genres=${genreId}&language=es-ES&page=1&sort_by=popularity.desc`,
+          cache1h,
+        )
+        return NextResponse.json(data.results?.slice(0, 22) || [])
+      }
+
+      case 'discover-tv': {
+        if (!genreId) return NextResponse.json({ error: 'genreId required' }, { status: 400 })
+        const data = await tmdb(
+          `/discover/tv?with_genres=${genreId}&language=es-ES&page=1&sort_by=popularity.desc`,
+          cache1h,
+        )
+        return NextResponse.json(data.results?.slice(0, 22) || [])
+      }
 
       default:
-        return NextResponse.json({ error: "Invalid action parameter" }, { status: 400 })
+        return NextResponse.json({ error: 'invalid action' }, { status: 400 })
     }
-  } catch (error) {
-    console.error("TMDB API Route Error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  } catch (err) {
+    console.error('[TMDB Route] unhandled error', err)
+    return NextResponse.json({ error: 'internal server error' }, { status: 500 })
   }
 }

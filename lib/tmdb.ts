@@ -1,6 +1,6 @@
 // lib/tmdb.ts
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p"
-
+export { searchMulti as searchContent };
 // Interfaces
 export interface Movie {
   id: number
