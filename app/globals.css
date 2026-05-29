@@ -10,6 +10,7 @@
 /* ── Design Tokens ─────────────────────────────────────────────── */
 :root {
   /* Core palette (Modern / Light) */
+  --plotter-body-bg:     #E5E7EB;      /* Body background for depth */
   --plotter-black:       #F3F4F6;      /* bg */
   --plotter-deep:        #FFFFFF;      /* deepest */
   --plotter-surface:     #E5E7EB;      /* surface */
@@ -74,6 +75,7 @@
 
 [data-theme="coffee"] {
   /* Core palette (Dark) */
+  --plotter-body-bg:     #030508;      /* Ultra-deep cinematic dark */
   --plotter-black:       #080C14;
   --plotter-deep:        #060A12;
   --plotter-surface:     #0C1422;
@@ -121,7 +123,7 @@ html {
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--plotter-black);
+  background-color: var(--plotter-body-bg);
   color: var(--plotter-white);
   min-height: 100dvh;
   overflow-x: hidden;
