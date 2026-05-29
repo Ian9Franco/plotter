@@ -74,7 +74,13 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                 onDragEnd={(_e, info) => {
                   if (info.offset.x < -30 && activeIndex < items.length - 1) setActiveIndex(prev => prev + 1)
                   else if (info.offset.x > 30 && activeIndex > 0) setActiveIndex(prev => prev - 1)
-                  else if (Math.abs(info.offset.x) < 5 && isCenter) handleCardClick(item.id)
+                }}
+                onTap={() => {
+                  if (isCenter) {
+                    handleCardClick(item.id)
+                  } else {
+                    setActiveIndex(index)
+                  }
                 }}
                 className="absolute w-[280px] h-[420px] rounded-2xl overflow-hidden bg-[var(--plotter-card)] shadow-[var(--nm-raised-lg)] cursor-grab active:cursor-grabbing border border-white/5"
                 style={{ zIndex }}

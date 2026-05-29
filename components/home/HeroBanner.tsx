@@ -47,12 +47,9 @@ export default function HeroBanner({ item }: HeroBannerProps) {
     return () => { mounted = false; setProviders(null) }
   }, [item])
 
-  const handleCTA = () => router.push(`/${type}/${item.id}`)
-
   return (
     <section 
-      className="relative w-full h-[80vh] min-h-[600px] max-h-[900px] overflow-hidden cursor-pointer"
-      onClick={handleCTA}
+      className="relative w-full h-[80vh] min-h-[600px] max-h-[900px] overflow-hidden"
     >
       <AnimatePresence mode="wait">
         <motion.div

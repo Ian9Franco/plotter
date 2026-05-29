@@ -422,11 +422,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── Page padding with bottom nav clearance ────────────────────── */
-.page-content { padding-bottom: 80px; }
-
-@media (min-width: 768px) {
-  .page-content { padding-bottom: 0; }
-}
+.page-content { padding-bottom: 96px; }
 
 /* ── Input / search ────────────────────────────────────────────── */
 /* Inspired by the neumorphic search bar with warm bottom glow */

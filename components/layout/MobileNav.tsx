@@ -16,7 +16,7 @@ export default function MobileNav() {
   const pathname = usePathname()
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 px-4 pb-5 md:hidden pointer-events-none select-none">
+    <div className="fixed bottom-0 inset-x-0 z-50 px-4 pb-5 pointer-events-none select-none">
       <nav
         className="w-full max-w-[400px] mx-auto pointer-events-auto bg-[var(--plotter-surface)]/60 backdrop-blur-2xl border border-white/[0.08] rounded-[28px] shadow-2xl"
         aria-label="Navegación principal móvil"

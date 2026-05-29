@@ -7,12 +7,15 @@ import Footer from '@/components/layout/Footer'
 import MediaGrid from '@/components/media/MediaGrid'
 import { getTrendingMovies, getNowPlayingTop } from '@/lib/tmdb/movies'
 import type { Movie } from '@/lib/tmdb/types'
-import { Film, Sparkles, TrendingUp } from 'lucide-react'
+import { Sparkles, TrendingUp, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function MoviesPage() {
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [featured, setFeatured] = useState<Movie | null>(null)
+  const [selectedGenre, setSelectedGenre] = useState('Todo')
+  const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -33,6 +36,19 @@ export default function MoviesPage() {
     load()
   }, [])
 
+  const GENRE_MAP: Record<string, number> = {
+    'Acción': 28,
+    'Aventura': 12,
+    'Comedia': 35,
+    'Drama': 18,
+    'Terror': 27,
+    'Ciencia Ficción': 878,
+  }
+
+  const filteredMovies = selectedGenre === 'Todo'
+    ? movies
+    : movies.filter(m => m.genre_ids?.includes(GENRE_MAP[selectedGenre]))
+
   return (
     <div className="min-h-dvh bg-[var(--plotter-black)]">
       <Suspense fallback={<div className="h-20" />}>
@@ -42,32 +58,66 @@ export default function MoviesPage() {
       <main className="page-content pt-20 max-w-[1400px] mx-auto w-full">
         {/* Page Header */}
         <div className="px-4 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full nm-raised flex items-center justify-center text-[var(--plotter-orange)]">
-              <Film className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-white font-['Outfit'] font-black text-xl leading-tight">
-                Películas
-              </h1>
-              <p className="text-[var(--plotter-muted)] text-xs">
-                Descubrí las últimas tendencias del cine
-              </p>
-            </div>
+          <div>
+            <h1 className="text-white font-['Outfit'] font-black text-xl leading-tight">
+              Películas
+            </h1>
+            <p className="text-[var(--plotter-muted)] text-xs">
+              Descubrí las últimas tendencias del cine
+            </p>
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="px-4 mb-6">
-          <div className="flex flex-wrap gap-2 pb-2">
-            {['Todo', 'Acción', 'Aventura', 'Comedia', 'Drama', 'Terror', 'Ciencia Ficción'].map(tab => (
-              <button
-                key={tab}
-                className={`chip shrink-0 ${tab === 'Todo' ? 'chip-active' : ''}`}
-              >
-                {tab}
-              </button>
-            ))}
+        {/* Filter Dropdown */}
+        <div className="px-4 mb-6 relative z-30">
+          <div className="relative inline-block text-left">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-lg)] bg-[var(--plotter-card)]/40 hover:bg-[var(--plotter-card)]/60 text-[var(--plotter-white)] text-sm font-medium border border-[var(--plotter-border)] shadow-[var(--nm-raised-sm)] transition-all duration-300 group cursor-pointer"
+            >
+              <span className="text-[var(--plotter-muted)]">Género:</span>
+              <span className="text-[var(--plotter-orange)] font-bold">{selectedGenre}</span>
+              <ChevronDown className={`w-4 h-4 ml-1 text-[var(--plotter-muted)] transition-transform duration-300 group-hover:text-[var(--plotter-white)] ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {isOpen && (
+                <>
+                  {/* Backdrop overlay to close when clicking outside */}
+                  <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 mt-2 w-56 rounded-[var(--radius-xl)] bg-[var(--plotter-card)] border border-[var(--plotter-border)] shadow-2xl z-40 overflow-hidden backdrop-blur-xl"
+                  >
+                    <div className="py-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      {['Todo', 'Acción', 'Aventura', 'Comedia', 'Drama', 'Terror', 'Ciencia Ficción'].map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => {
+                            setSelectedGenre(tab)
+                            setIsOpen(false)
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 hover:bg-[var(--plotter-card-hover)] flex items-center justify-between cursor-pointer ${
+                            selectedGenre === tab 
+                              ? 'text-[var(--plotter-orange)] font-bold' 
+                              : 'text-[var(--plotter-muted)] hover:text-[var(--plotter-white)]'
+                          }`}
+                        >
+                          {tab}
+                          {selectedGenre === tab && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--plotter-orange)] shadow-[0_0_8px_rgba(244,98,42,0.6)]" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -105,8 +155,8 @@ export default function MoviesPage() {
 
         {/* Movies Grid */}
         <MediaGrid
-          items={movies}
-          title="Tendencias de la semana"
+          items={filteredMovies}
+          title={selectedGenre === 'Todo' ? "Tendencias de la semana" : `Películas de ${selectedGenre}`}
           loading={loading}
           columns={3}
         />

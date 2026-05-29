@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import type { MediaItem } from '@/lib/tmdb/types'
-import { Film, Tv } from 'lucide-react'
+
 
 interface MediaCardProps {
   item: MediaItem
@@ -48,15 +48,7 @@ export default function MediaCard({ item, priority = false }: MediaCardProps) {
         {/* Permanent dark gradient for immersive text readability */}
         <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-[#04080F] via-[#04080F]/80 to-transparent pointer-events-none transition-opacity duration-500 group-hover:from-[#020408] group-hover:via-[#020408]/90" />
 
-        {/* Type badge (Top Left) */}
-        <div className="absolute top-2.5 left-2.5 z-10 transition-transform duration-500 group-hover:-translate-y-1">
-          <span className={`badge ${type === 'movie' ? 'badge-movie bg-[#0A0F1A]/60 backdrop-blur-md' : 'badge-tv bg-[#0A0F1A]/60 backdrop-blur-md'}`}>
-            {type === 'movie'
-              ? <><Film className="w-2.5 h-2.5" /> Peli</>
-              : <><Tv  className="w-2.5 h-2.5" /> Serie</>
-            }
-          </span>
-        </div>
+
 
         {/* Premium Content (Bottom pinned) */}
         <div className="absolute bottom-0 inset-x-0 p-3.5 z-20 flex flex-col justify-end">
