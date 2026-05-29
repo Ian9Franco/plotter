@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       /* ─── TV Details ─────────────────────────────────────────── */
       case 'tv-details': {
         if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-        const data = await tmdb(`/tv/${id}?language=es-ES`, cache1h)
+        const data = await tmdb(`/tv/${id}?language=es-ES&append_to_response=external_ids`, cache1h)
         return NextResponse.json(data)
       }
 

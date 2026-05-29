@@ -44,6 +44,29 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
     router.push(`/${activeSection === 'movies' ? 'movie' : 'tv'}/${id}`)
   }
 
+  const [omdbScores, setOmdbScores] = useState<Record<number, string | null>>({})
+
+  useEffect(() => {
+    if (!activeItem) return
+    const type = activeSection === 'movies' ? 'movie' : 'tv'
+    
+    // Solo consultar si no tenemos el dato cacheado localmente
+    if (omdbScores[activeItem.id] !== undefined) return
+
+    fetch(`/api/omdb?tmdbId=${activeItem.id}&type=${type}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.rottenTomatoes) {
+          setOmdbScores(prev => ({ ...prev, [activeItem.id]: data.rottenTomatoes }))
+        } else {
+          setOmdbScores(prev => ({ ...prev, [activeItem.id]: 'N/A' }))
+        }
+      })
+      .catch(() => {
+        setOmdbScores(prev => ({ ...prev, [activeItem.id]: 'N/A' }))
+      })
+  }, [activeItem?.id, activeSection])
+
   if (items.length === 0) return null
 
   return (
@@ -112,10 +135,12 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                     className="absolute bottom-0 inset-x-0 p-5 z-20 flex flex-col justify-end pointer-events-none"
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="flex items-center bg-[#F5C518] rounded px-1.5 py-[2px] shadow-sm">
-                        <span className="text-black font-black text-[10px] tracking-tight">IMDb</span>
-                        <span className="text-black font-bold text-[11px] ml-1">{item.vote_average.toFixed(1)}</span>
-                      </div>
+                      {omdbScores[item.id] && omdbScores[item.id] !== 'N/A' && (
+                        <div className="flex items-center bg-red-600/90 text-white rounded px-1.5 py-[2px] shadow-sm gap-0.5">
+                          <span className="text-[10px]">🍅</span>
+                          <span className="text-white font-bold text-[11px]">{omdbScores[item.id]}</span>
+                        </div>
+                      )}
                       <span className="text-white/80 text-[12px] font-semibold">{getReleaseYear(item)}</span>
                     </div>
                     <h3 className="text-white font-bold text-[20px] leading-tight line-clamp-2 font-['Outfit'] drop-shadow-lg">

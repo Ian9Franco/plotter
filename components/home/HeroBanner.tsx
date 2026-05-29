@@ -33,6 +33,8 @@ export default function HeroBanner({ item }: HeroBannerProps) {
   const rating     = item.vote_average?.toFixed(1)
 
   const [providers, setProviders] = useState<WatchProvidersType | null>(null)
+  const [omdb, setOmdb] = useState<{ imdb: string | null; metacritic: string | null } | null>(null)
+  const [omdbLoading, setOmdbLoading] = useState(false)
 
   useEffect(() => {
     if (!item) return
@@ -44,7 +46,26 @@ export default function HeroBanner({ item }: HeroBannerProps) {
       if (mounted) setProviders(res)
     }).catch(console.error)
 
-    return () => { mounted = false; setProviders(null) }
+    // Fetch OMDb ratings for banner
+    setOmdbLoading(true)
+    const type = isM ? 'movie' : 'tv'
+    fetch(`/api/omdb?tmdbId=${item.id}&type=${type}`)
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data && !data.error) {
+          setOmdb({ imdb: data.imdb, metacritic: data.metacritic })
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (mounted) setOmdbLoading(false)
+      })
+
+    return () => { 
+      mounted = false
+      setProviders(null)
+      setOmdb(null)
+    }
   }, [item])
 
   return (
@@ -100,9 +121,33 @@ export default function HeroBanner({ item }: HeroBannerProps) {
               </div>
               
               {overview && (
-                <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl drop-shadow-md">
-                  {overview.includes('.') ? overview.substring(0, overview.indexOf('.') + 1) : overview}
-                </p>
+                <div className="space-y-3 max-w-2xl pointer-events-auto">
+                  <p className="text-sm md:text-base text-white/80 leading-relaxed drop-shadow-md">
+                    {overview.includes('.') ? overview.substring(0, overview.indexOf('.') + 1) : overview}
+                  </p>
+                  
+                  {/* Banner ratings block (IMDb & Metacritic) */}
+                  {(omdb || omdbLoading) && (
+                    <div className="flex items-center gap-3 pt-1 text-xs text-white/70 select-none">
+                      {omdbLoading ? (
+                        <div className="h-5 w-24 bg-white/10 rounded animate-pulse" />
+                      ) : (
+                        <>
+                          {omdb?.imdb && (
+                            <span className="flex items-center bg-[#F5C518] text-black font-extrabold px-1.5 py-[2px] rounded shadow-sm text-[10px]">
+                              IMDb {omdb.imdb.replace('/10', '')}
+                            </span>
+                          )}
+                          {omdb?.metacritic && (
+                            <span className="flex items-center bg-[#66CC33] text-white font-extrabold px-1.5 py-[2px] rounded shadow-sm text-[10px]">
+                              Metacritic {omdb.metacritic}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </motion.div>
           </div>

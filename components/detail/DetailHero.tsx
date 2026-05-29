@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getBackdropUrl, getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
@@ -18,6 +19,36 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
   const backdropUrl = getBackdropUrl(item.backdrop_path, 'w1280')
   const posterUrl   = getPosterUrl(item.poster_path, 'w342')
   const movie       = isMovie(item)
+
+  const imdbId = movie 
+    ? (item as any).imdb_id 
+    : (item as any).external_ids?.imdb_id
+
+  const [omdbRatings, setOmdbRatings] = useState<{
+    rottenTomatoes: string | null
+    imdb: string | null
+    metacritic: string | null
+  } | null>(null)
+  const [omdbLoading, setOmdbLoading] = useState(false)
+
+  useEffect(() => {
+    if (!imdbId) return
+    async function fetchOmdb() {
+      setOmdbLoading(true)
+      try {
+        const res = await fetch(`/api/omdb?imdbId=${imdbId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setOmdbRatings(data)
+        }
+      } catch (err) {
+        console.error("Error loading OMDb ratings:", err)
+      } finally {
+        setOmdbLoading(false)
+      }
+    }
+    fetchOmdb()
+  }, [imdbId])
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && document.referrer && document.referrer.includes(window.location.host)) {
@@ -189,6 +220,59 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
             <span>Excelente</span>
           </div>
         </div>
+
+        {/* OMDb Ratings Row (Sleek Glassmorphic Badges) */}
+        {imdbId && (omdbRatings || omdbLoading) && (
+          <div className="bg-[var(--plotter-card)]/40 border border-[var(--plotter-border)] p-4 rounded-2xl backdrop-blur-md">
+            <span className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-3">
+              Crítica Especializada (OMDb)
+            </span>
+            
+            {omdbLoading ? (
+              <div className="flex gap-4 items-center justify-between">
+                <div className="h-14 flex-1 bg-[var(--plotter-black)]/30 border border-[var(--plotter-border)] rounded-xl animate-pulse" />
+                <div className="h-14 flex-1 bg-[var(--plotter-black)]/30 border border-[var(--plotter-border)] rounded-xl animate-pulse" />
+                <div className="h-14 flex-1 bg-[var(--plotter-black)]/30 border border-[var(--plotter-border)] rounded-xl animate-pulse" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {/* IMDb Rating */}
+                <div className="flex flex-col items-center justify-center p-2.5 bg-[var(--plotter-black)]/30 rounded-xl border border-[var(--plotter-border)] transition-all hover:border-[var(--plotter-orange)]/30">
+                  <div className="flex items-center bg-[#F5C518] text-black font-extrabold text-[9px] px-1.5 py-[2px] rounded tracking-tight shadow-sm select-none">
+                    IMDb
+                  </div>
+                  <span className="text-[var(--plotter-white)] text-xs md:text-sm font-black mt-2 font-['Outfit']">
+                    {omdbRatings?.imdb || 'N/A'}
+                  </span>
+                </div>
+
+                {/* Rotten Tomatoes */}
+                <div className="flex flex-col items-center justify-center p-2.5 bg-[var(--plotter-black)]/30 rounded-xl border border-[var(--plotter-border)] transition-all hover:border-[var(--plotter-orange)]/30">
+                  <div className="flex items-center gap-1 select-none">
+                    <span className="text-xs">🍅</span>
+                    <span className="text-[var(--plotter-white)] font-bold text-[9px] uppercase tracking-wider">Rotten</span>
+                  </div>
+                  <span className="text-[var(--plotter-white)] text-xs md:text-sm font-black mt-2 font-['Outfit']">
+                    {omdbRatings?.rottenTomatoes || 'N/A'}
+                  </span>
+                </div>
+
+                {/* Metacritic */}
+                <div className="flex flex-col items-center justify-center p-2.5 bg-[var(--plotter-black)]/30 rounded-xl border border-[var(--plotter-border)] transition-all hover:border-[var(--plotter-orange)]/30">
+                  <div className="flex items-center gap-1 select-none">
+                    <div className="bg-[#66CC33] text-white font-extrabold text-[9px] px-1 py-[2px] rounded leading-none">
+                      M
+                    </div>
+                    <span className="text-[var(--plotter-white)] font-bold text-[9px] uppercase tracking-wider">Metascore</span>
+                  </div>
+                  <span className="text-[var(--plotter-white)] text-xs md:text-sm font-black mt-2 font-['Outfit']">
+                    {omdbRatings?.metacritic ? `${omdbRatings.metacritic}/100` : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
