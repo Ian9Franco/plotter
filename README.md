@@ -1,4 +1,7 @@
-# 🎬 Plotter
+<div align="center">
+  <img src="public/iconblack.png" alt="Plotter Logo" width="120" />
+  <h1>Plotter</h1>
+</div>
 
 Plotter es una plataforma web premium de descubrimiento y crítica cinematográfica diseñada especialmente para cinéfilos. Desarrollada con **Next.js 14** (App Router) y **TypeScript**, combina una experiencia visual inmersiva de alta fidelidad inspirada en el **Neumorfismo Profundo (Deep Neumorphism)** y el **Glassmorphism**, junto con un potente motor de renderizado de imágenes para compartir reseñas en redes sociales.
 

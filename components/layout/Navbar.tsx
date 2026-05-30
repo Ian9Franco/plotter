@@ -79,12 +79,12 @@ export default function Navbar() {
   }
 
   const iconBtnStyle: React.CSSProperties = {
-    boxShadow: 'var(--nm-pill)',
+    boxShadow: '2px 2px 6px var(--nm-dark), 0 0 12px rgba(244,98,42,0.2)',
     backgroundColor: 'var(--plotter-card)',
   }
 
   const genrePillStyle: React.CSSProperties = {
-    boxShadow: 'var(--nm-pill)',
+    boxShadow: '2px 2px 6px var(--nm-dark), 0 0 12px rgba(244,98,42,0.2)',
     backgroundColor: 'var(--plotter-card)',
   }
 

@@ -22,7 +22,7 @@ export function ThemeToggle() {
     <button
       onClick={() => setTheme(isCoffee ? 'modern' : 'coffee')}
       className="relative w-14 h-8 rounded-full p-1 flex items-center justify-between cursor-pointer select-none transition-all duration-300 focus:outline-none z-50 active:scale-95 hover:-translate-y-px"
-      style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+      style={{ boxShadow: 'inset 2px 2px 6px var(--nm-dark), 0 0 12px rgba(244,98,42,0.2)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
       aria-label="Cambiar tema"
     >
       {/* Sliding thumb */}

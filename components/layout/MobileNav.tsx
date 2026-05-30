@@ -50,7 +50,7 @@ export default function MobileNav() {
                     layoutId="mobile-nav-bg"
                     className="absolute inset-0 rounded-2xl"
                     style={{
-                      boxShadow: 'var(--nm-inset)',
+                      boxShadow: 'inset 2px 2px 6px var(--nm-dark), 0 0 12px rgba(244,98,42,0.2)',
                       backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
                     }}
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}

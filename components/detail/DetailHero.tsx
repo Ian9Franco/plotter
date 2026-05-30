@@ -163,18 +163,6 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
               </div>
             )}
 
-            {/* Write Review FAB */}
-            <button
-              onClick={onWriteReview}
-              className="absolute bottom-5 right-5 z-[60] w-10 h-10 rounded-full flex items-center justify-center text-white active:scale-95 transition-all hover:scale-110 cursor-pointer"
-              style={{
-                boxShadow: 'var(--nm-glow-orange)',
-                backgroundColor: 'var(--plotter-orange)',
-              }}
-              aria-label="Escribir mi reseña"
-            >
-              <Pencil className="w-5 h-5" />
-            </button>
           </>
         )}
       </div>
@@ -234,19 +222,31 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
       <div className="px-5 mt-6 space-y-4">
 
         {/* Synopsis Panel */}
-        {item.overview && (
-          <div
-            className="p-5 rounded-3xl transition-all duration-300"
-            style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
-          >
-            <div className="inline-flex items-center px-3 py-1 rounded-full mb-3" style={nmInset}>
+        <div
+          className="p-5 rounded-3xl transition-all duration-300"
+          style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="inline-flex items-center px-3 py-1 rounded-full" style={nmInset}>
               <span className="text-[var(--plotter-muted)] text-[9px] uppercase tracking-[0.2em] font-black">Sinopsis</span>
             </div>
-            <p className="text-[var(--plotter-white)]/85 text-[13px] leading-relaxed font-light">
-              {item.overview}
-            </p>
+            <button
+              onClick={onWriteReview}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-white active:scale-95 transition-all hover:-translate-y-0.5 cursor-pointer"
+              style={{
+                boxShadow: 'var(--nm-glow-orange)',
+                backgroundColor: 'var(--plotter-orange)',
+              }}
+              aria-label="Escribir mi reseña"
+            >
+              <Pencil className="w-3 h-3" fill="currentColor" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Reseña</span>
+            </button>
           </div>
-        )}
+          <p className="text-[var(--plotter-white)]/85 text-[13px] leading-relaxed font-light">
+            {item.overview || 'No hay sinopsis disponible.'}
+          </p>
+        </div>
 
         {/* Community Score Panel */}
         <div

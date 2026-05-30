@@ -18,6 +18,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
+  const dragDistance = useRef(0)
 
   // Max 15 items
   const carouselItems = items.slice(0, 15)
@@ -89,6 +90,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
     setIsDragging(true)
     setStartX(e.pageX - containerRef.current.offsetLeft)
     setScrollLeft(containerRef.current.scrollLeft)
+    dragDistance.current = 0
   }
 
   const handleMouseLeave = () => {
@@ -105,6 +107,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
     const x = e.pageX - containerRef.current.offsetLeft
     const walk = (x - startX) * 2 // Scroll speed multiplier
     containerRef.current.scrollLeft = scrollLeft - walk
+    dragDistance.current = Math.abs(x - startX)
   }
 
   if (carouselItems.length === 0) return null
@@ -139,6 +142,12 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
+          onClickCapture={(e) => {
+            if (dragDistance.current > 5) {
+              e.stopPropagation()
+              e.preventDefault()
+            }
+          }}
           className={`flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-20 px-10 -my-16 -mx-10 no-scrollbar select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           style={{
             scrollbarWidth: 'none',
