@@ -11,6 +11,16 @@ export async function getNowPlayingTop(): Promise<Movie | null> {
   return apiFetch<Movie | null>('top-rated-theaters', {}, { revalidate: 3600 })
 }
 
+export async function getUpcomingMovies(): Promise<Movie[]> {
+  return apiFetch<Movie[]>('upcoming', {}, { revalidate: 3600 })
+}
+
+export async function getNowPlayingMovies(): Promise<Movie[]> {
+  return apiFetch<Movie[]>('now-playing', {}, { revalidate: 3600 })
+}
+
+
+
 export async function searchMovies(query: string): Promise<Movie[]> {
   return apiFetch<Movie[]>('search', { query, type: 'movie' })
 }

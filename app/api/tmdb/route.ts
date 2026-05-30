@@ -51,6 +51,20 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(data.results?.slice(0, 22) || [])
       }
 
+      /* ─── Upcoming Movies ────────────────────────────────────── */
+      case 'upcoming': {
+        const data = await tmdb(`/movie/upcoming?language=es-ES&page=1`, cache1h)
+        return NextResponse.json(data.results || [])
+      }
+
+      /* ─── Now Playing Movies ─────────────────────────────────── */
+      case 'now-playing': {
+        const data = await tmdb('/movie/now_playing?language=es-ES&page=1', cache1h)
+        return NextResponse.json(data.results || [])
+      }
+
+
+
       /* ─── Now Playing (Hero movie) ───────────────────────────── */
       case 'top-rated-theaters': {
         const data = await tmdb('/movie/now_playing?language=en-US&page=1', cache1h)

@@ -5,13 +5,16 @@ import Navbar from '@/components/layout/Navbar'
 import MobileNav from '@/components/layout/MobileNav'
 import Footer from '@/components/layout/Footer'
 import MediaGrid from '@/components/media/MediaGrid'
-import { getTrendingMovies, getNowPlayingTop } from '@/lib/tmdb/movies'
+import MediaCarousel from '@/components/media/MediaCarousel'
+import { getTrendingMovies, getNowPlayingMovies, getUpcomingMovies } from '@/lib/tmdb/movies'
 import type { Movie } from '@/lib/tmdb/types'
-import { Sparkles, TrendingUp, ChevronDown } from 'lucide-react'
+import { Sparkles, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function MoviesPage() {
-  const [movies, setMovies] = useState<Movie[]>([])
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([])
+  const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>([])
+  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [featured, setFeatured] = useState<Movie | null>(null)
   const [selectedGenre, setSelectedGenre] = useState('Todo')
@@ -21,12 +24,31 @@ export default function MoviesPage() {
     async function load() {
       setLoading(true)
       try {
-        const [trendingData, topMovie] = await Promise.all([
+        const [trendingData, nowPlayingData, upcomingData] = await Promise.all([
           getTrendingMovies(),
-          getNowPlayingTop(),
+          getNowPlayingMovies(),
+          getUpcomingMovies(),
         ])
-        setMovies(trendingData)
-        if (topMovie) setFeatured(topMovie)
+
+        const todayStr = new Date().toISOString().split('T')[0]
+        
+        // Filter trending and now playing to make sure unreleased movies are excluded
+        const releasedTrending = trendingData.filter(m => !m.release_date || m.release_date <= todayStr)
+        const releasedNowPlaying = nowPlayingData.filter(m => !m.release_date || m.release_date <= todayStr)
+        
+        // Filter upcoming movies to ensure they are strictly in the future
+        const strictlyUpcoming = upcomingData.filter(m => m.release_date && m.release_date > todayStr)
+
+        setTrendingMovies(releasedTrending)
+        setNowPlayingMovies(releasedNowPlaying)
+        setUpcomingMovies(strictlyUpcoming)
+
+        // Set featured movie from now playing or trending
+        if (releasedNowPlaying.length > 0) {
+          setFeatured(releasedNowPlaying[0])
+        } else if (releasedTrending.length > 0) {
+          setFeatured(releasedTrending[0])
+        }
       } catch (err) {
         console.error('Error loading movies:', err)
       } finally {
@@ -46,8 +68,8 @@ export default function MoviesPage() {
   }
 
   const filteredMovies = selectedGenre === 'Todo'
-    ? movies
-    : movies.filter(m => m.genre_ids?.includes(GENRE_MAP[selectedGenre]))
+    ? trendingMovies
+    : trendingMovies.filter(m => m.genre_ids?.includes(GENRE_MAP[selectedGenre]))
 
   return (
     <div className="min-h-dvh bg-[var(--plotter-black)]">
@@ -122,7 +144,7 @@ export default function MoviesPage() {
         </div>
 
         {/* Featured Card (Top Movie) */}
-        {!loading && featured && (
+        {!loading && featured && selectedGenre === 'Todo' && (
           <div className="px-4 mb-6">
             <div 
               className="relative h-[220px] rounded-[var(--radius-xl)] overflow-hidden cursor-pointer nm-raised-lg group"
@@ -153,13 +175,38 @@ export default function MoviesPage() {
           </div>
         )}
 
-        {/* Movies Grid */}
-        <MediaGrid
-          items={filteredMovies}
-          title={selectedGenre === 'Todo' ? "Tendencias de la semana" : `Películas de ${selectedGenre}`}
-          loading={loading}
-          columns={3}
-        />
+        {/* Movies Carousels or Grid depending on Selected Genre */}
+        {selectedGenre === 'Todo' ? (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="space-y-12 px-4">
+                {Array.from({ length: 3 }).map((_, sectionIdx) => (
+                  <div key={sectionIdx} className="space-y-4">
+                    <div className="skeleton h-6 w-48 rounded" />
+                    <div className="flex gap-4 overflow-x-hidden py-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex-shrink-0 w-[180px] sm:w-[220px] aspect-[2/3] skeleton rounded-2xl" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <MediaCarousel items={trendingMovies} title="Tendencias de la Semana" />
+                <MediaCarousel items={nowPlayingMovies} title="En Cines Hoy" />
+                <MediaCarousel items={upcomingMovies} title="Próximamente" />
+              </>
+            )}
+          </div>
+        ) : (
+          <MediaGrid
+            items={filteredMovies}
+            title={`Películas de ${selectedGenre}`}
+            loading={loading}
+            columns={3}
+          />
+        )}
       </main>
 
       <Footer />

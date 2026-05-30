@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getPosterUrl } from '@/lib/tmdb/client'
+import { getPosterUrl, getBackdropUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import type { MediaItem } from '@/lib/tmdb/types'
+import { Ticket, Calendar } from 'lucide-react'
 
 interface MediaCardProps {
   item: MediaItem
   priority?: boolean
+  variant?: 'default' | 'wide'
 }
 
-export default function MediaCard({ item, priority = false }: MediaCardProps) {
+export default function MediaCard({ item, priority = false, variant = 'default' }: MediaCardProps) {
   const router    = useRouter()
   const [isActive, setIsActive] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -20,8 +22,28 @@ export default function MediaCard({ item, priority = false }: MediaCardProps) {
   const title     = getTitle(item)
   const year      = getReleaseYear(item)
   const posterUrl = getPosterUrl(item.poster_path, 'w342')
+  const backdropUrl = getBackdropUrl(item.backdrop_path, 'w780')
   const type      = isMovie(item) ? 'movie' : 'tv'
   const rating    = item.vote_average.toFixed(1)
+
+  const isMovieItem = isMovie(item)
+  const releaseDateStr = isMovieItem ? (item as any).release_date : null
+  
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]
+  
+  const isInTheaters = (() => {
+    if (!isMovieItem || !releaseDateStr) return false
+    const releaseDate = new Date(releaseDateStr)
+    const fortyFiveDaysAgo = new Date()
+    fortyFiveDaysAgo.setDate(today.getDate() - 45)
+    return releaseDate <= today && releaseDate >= fortyFiveDaysAgo
+  })()
+
+  const isUpcoming = (() => {
+    if (!isMovieItem || !releaseDateStr) return false
+    return releaseDateStr > todayStr
+  })()
 
   // Extra OMDb Ratings State
   const [omdbRatings, setOmdbRatings] = useState<{
@@ -92,14 +114,43 @@ export default function MediaCard({ item, priority = false }: MediaCardProps) {
       role="button"
       aria-label={`Ver ${title}`}
     >
-      <div className={`aspect-[2/3] relative overflow-hidden bg-[#0A0F1A] rounded-[20px] border transition-all duration-500 shadow-[0_8px_24px_rgba(0,0,0,0.5)] ${
+      <div className={`${variant === 'wide' ? 'aspect-[16/9]' : 'aspect-[2/3]'} relative overflow-hidden bg-[#0A0F1A] rounded-[20px] border transition-all duration-500 shadow-[0_8px_24px_rgba(0,0,0,0.5)] ${
         isActive 
-          ? "border-primary/40 shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] scale-[1.03]" 
-          : "border-white/[0.04] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] group-hover:border-white/[0.08]"
+          ? isInTheaters
+            ? "border-red-500/50 shadow-[0_20px_40px_rgba(239,68,68,0.25),0_0_30px_rgba(239,68,68,0.15)] scale-[1.03]"
+            : isUpcoming
+              ? "border-amber-500/50 shadow-[0_20px_40px_rgba(245,158,11,0.25),0_0_30px_rgba(245,158,11,0.15)] scale-[1.03]"
+              : "border-primary/40 shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] scale-[1.03]" 
+          : isInTheaters
+            ? "border-red-500/20 group-hover:shadow-[0_20px_40px_rgba(239,68,68,0.2),0_0_30px_rgba(239,68,68,0.1)] group-hover:border-red-500/45"
+            : isUpcoming
+              ? "border-amber-500/20 group-hover:shadow-[0_20px_40px_rgba(245,158,11,0.2),0_0_30px_rgba(245,158,11,0.1)] group-hover:border-amber-500/45"
+              : "border-white/[0.04] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] group-hover:border-white/[0.08]"
       }`}>
+        {/* Floating status badges */}
+        {isInTheaters && (
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            <div className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-orange-600 text-white font-['Outfit'] font-black text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full shadow-[0_4px_12px_rgba(220,38,38,0.4)] border border-white/10 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <Ticket className="w-2.5 h-2.5 animate-bounce" />
+              <span>En Cines</span>
+            </div>
+          </div>
+        )}
+
+        {isUpcoming && (
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-['Outfit'] font-black text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full shadow-[0_4px_12px_rgba(245,158,11,0.3)] border border-black/10 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+              <Calendar className="w-2.5 h-2.5" />
+              <span>Próximamente</span>
+            </div>
+          </div>
+        )}
+
         {/* Poster image */}
         <img
-          src={posterUrl}
+          src={variant === 'wide' && backdropUrl ? backdropUrl : posterUrl}
           alt={`Póster de ${title}`}
           className={`w-full h-full object-cover transition-transform duration-700 ${
             isActive ? "scale-110" : "group-hover:scale-110"
