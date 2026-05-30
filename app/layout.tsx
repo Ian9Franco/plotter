@@ -3,6 +3,10 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Outfit } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import PageTransition from '@/components/layout/PageTransition'
+import Navbar from '@/components/layout/Navbar'
+import MobileNav from '@/components/layout/MobileNav'
+import { Suspense } from 'react'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -51,9 +55,19 @@ export default function RootLayout({
             className="flex-1 flex flex-col w-full max-w-[1440px] mx-auto rounded-[24px] md:rounded-[36px] border border-[var(--plotter-border)] bg-[var(--plotter-black)] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.65)] relative overflow-hidden h-full"
             style={{ transform: 'translate3d(0, 0, 0)' }}
           >
-            <div className="flex-1 overflow-y-auto overflow-x-hidden relative h-full">
-              {children}
-            </div>
+              <Suspense fallback={<div className="h-20" />}>
+                <Navbar />
+              </Suspense>
+              
+              <div className="flex-1 relative w-full overflow-hidden">
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </div>
+
+              <Suspense fallback={null}>
+                <MobileNav />
+              </Suspense>
           </div>
         </ThemeProvider>
       </body>

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Star, Calendar } from 'lucide-react'
 import { WatchProviders } from '@/components/ui/WatchProviders'
 import { useState, useEffect } from 'react'
+import { useLanguage } from '@/hooks/useLanguage'
 
 interface HeroBannerProps {
   item: MediaItem
@@ -17,10 +18,11 @@ interface HeroBannerProps {
 
 export default function HeroBanner({ item }: HeroBannerProps) {
   const router = useRouter()
+  const { useOriginal } = useLanguage()
 
   if (!item) return <HeroBannerSkeleton />
 
-  const title      = getTitle(item)
+  const title      = getTitle(item, useOriginal)
   const type       = isMovie(item) ? 'movie' : 'tv'
   const backdropUrl = getBackdropUrl(item.backdrop_path, 'w1280')
   const genres      = item.genre_ids && item.genre_ids.length > 0 ? 'TENDENCIA' : 'SPOTLIGHT'
@@ -96,57 +98,90 @@ export default function HeroBanner({ item }: HeroBannerProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--plotter-black)] via-transparent to-transparent opacity-80" />
 
           {/* Info Content at the TOP */}
-          <div className="absolute inset-0 flex flex-col justify-start px-6 md:px-16 pt-[100px] md:pt-[120px] max-w-[1400px] mx-auto w-full pointer-events-none">
+          <div className="absolute inset-0 flex flex-col justify-start px-6 md:px-16 pt-[80px] md:pt-[100px] max-w-[1400px] mx-auto w-full pointer-events-none">
             <motion.div
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.6 }}
               className="max-w-2xl"
             >
-              <span className="text-xs md:text-sm font-black tracking-[0.2em] text-[var(--plotter-orange)] uppercase mb-2 block drop-shadow-md">
-                {type === 'movie' ? 'PELÍCULA' : 'SERIE'} • {genres}
-              </span>
-              
-              <h1 className="font-['Outfit'] font-black text-4xl md:text-6xl text-white leading-tight line-clamp-2 drop-shadow-xl mb-3">
+              {/* Type badge */}
+              <div className="inline-flex items-center px-3 py-1 rounded-full mb-3 pointer-events-none"
+                style={{ boxShadow: '3px 3px 10px rgba(0,0,0,0.5), -1px -1px 6px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)', backgroundColor: 'rgba(244,98,42,0.15)', border: '1px solid rgba(244,98,42,0.3)' }}
+              >
+                <span className="text-[10px] font-black tracking-[0.2em] text-[var(--plotter-orange)] uppercase drop-shadow-md">
+                  {type === 'movie' ? 'PELÍCULA' : 'SERIE'} • {genres}
+                </span>
+              </div>
+
+              <h1 className="font-['Outfit'] font-black text-4xl md:text-6xl text-white leading-tight line-clamp-2 drop-shadow-xl mb-4">
                 {title}
               </h1>
-              
-              <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm text-white/90 font-medium mb-4 drop-shadow-md">
-                <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-[var(--plotter-orange)] fill-[var(--plotter-orange)]" /> {rating}</span>
-                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {year}</span>
-                
-                <div onClick={(e) => e.stopPropagation()} className="pl-4 border-l border-white/20">
+
+              {/* Metadata nm-pill row */}
+              <div className="flex flex-wrap items-center gap-2 mb-4 pointer-events-auto">
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+                  style={{ boxShadow: '3px 3px 12px rgba(0,0,0,0.6), -2px -2px 8px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)', backgroundColor: 'rgba(15,26,46,0.7)', backdropFilter: 'blur(12px)' }}
+                >
+                  <Star className="w-3.5 h-3.5 text-[var(--plotter-orange)] fill-[var(--plotter-orange)]" />
+                  {rating}
+                </div>
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+                  style={{ boxShadow: '3px 3px 12px rgba(0,0,0,0.6), -2px -2px 8px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)', backgroundColor: 'rgba(15,26,46,0.7)', backdropFilter: 'blur(12px)' }}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-white/60" />
+                  {year}
+                </div>
+
+                {/* IMDb / Metacritic */}
+                {(omdb || omdbLoading) && (
+                  <>
+                    {omdbLoading ? (
+                      <div className="h-7 w-16 rounded-full animate-pulse" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                    ) : (
+                      <>
+                        {omdb?.imdb && (
+                          <div
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-black"
+                            style={{ backgroundColor: '#F5C518', color: '#000' }}
+                          >
+                            IMDb {omdb.imdb.replace('/10', '')}
+                          </div>
+                        )}
+                        {omdb?.metacritic && (
+                          <div
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-black text-white"
+                            style={{ backgroundColor: '#66CC33' }}
+                          >
+                            M {omdb.metacritic}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+
+                <div onClick={(e) => e.stopPropagation()} className="pointer-events-auto">
                   <WatchProviders providers={providers} />
                 </div>
               </div>
-              
+
               {overview && (
-                <div className="space-y-3 max-w-2xl pointer-events-auto">
-                  <p className="text-sm md:text-base text-white/80 leading-relaxed drop-shadow-md">
-                    {overview.includes('.') ? overview.substring(0, overview.indexOf('.') + 1) : overview}
-                  </p>
-                  
-                  {/* Banner ratings block (IMDb & Metacritic) */}
-                  {(omdb || omdbLoading) && (
-                    <div className="flex items-center gap-3 pt-1 text-xs text-white/70 select-none">
-                      {omdbLoading ? (
-                        <div className="h-5 w-24 bg-white/10 rounded animate-pulse" />
-                      ) : (
-                        <>
-                          {omdb?.imdb && (
-                            <span className="flex items-center bg-[#F5C518] text-black font-extrabold px-1.5 py-[2px] rounded shadow-sm text-[10px]">
-                              IMDb {omdb.imdb.replace('/10', '')}
-                            </span>
-                          )}
-                          {omdb?.metacritic && (
-                            <span className="flex items-center bg-[#66CC33] text-white font-extrabold px-1.5 py-[2px] rounded shadow-sm text-[10px]">
-                              Metacritic {omdb.metacritic}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                <div className="max-w-lg pointer-events-auto">
+                  <div
+                    className="p-4 rounded-2xl"
+                    style={{
+                      boxShadow: '5px 5px 20px rgba(0,0,0,0.7), -3px -3px 12px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(8,12,20,0.6)',
+                      backdropFilter: 'blur(16px)',
+                    }}
+                  >
+                    <p className="text-sm text-white/80 leading-relaxed line-clamp-2">
+                      {overview}
+                    </p>
+                  </div>
                 </div>
               )}
             </motion.div>

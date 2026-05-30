@@ -56,21 +56,19 @@ function SearchContent() {
 
   return (
     <div className="min-h-dvh bg-[var(--plotter-black)]">
-      <Navbar />
-
-      <main className="page-content pt-20">
+      <main className="page-content pt-16">
         {/* Back + title */}
-        <div className="px-4 mb-4 flex items-center gap-3">
+        <div className="px-4 mb-5 mt-4 flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="w-8 h-8 rounded-full border border-[var(--plotter-border)] flex items-center justify-center text-[var(--plotter-muted)] hover:text-white hover:border-[var(--plotter-border-glow)] transition-all"
+            className="w-10 h-10 rounded-full border-2 border-[var(--plotter-border)] flex items-center justify-center text-[var(--plotter-muted)] bg-[var(--plotter-card)] hover:text-[var(--plotter-orange)] hover:border-[var(--plotter-orange)] shadow-sm transition-all"
             aria-label="Volver"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-white font-['Outfit'] font-bold text-lg leading-tight">
-              {queryParam ? `"${queryParam}"` : 'Buscar'}
+            <h1 className="text-[var(--plotter-text)] font-['Outfit'] font-black text-2xl leading-tight">
+              {queryParam ? `"${queryParam}"` : 'Búsqueda'}
             </h1>
             {!loading && searched && (
               <p className="text-[var(--plotter-muted)] text-xs">
@@ -88,10 +86,10 @@ function SearchContent() {
                 key={id}
                 id={`search-filter-${id}`}
                 onClick={() => setFilter(id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all duration-200 ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 shadow-sm ${
                   filter === id
-                    ? 'bg-[var(--plotter-green)] text-black border-transparent'
-                    : 'bg-transparent text-[var(--plotter-muted)] border-[var(--plotter-border)] hover:border-[var(--plotter-border-glow)] hover:text-white'
+                    ? 'bg-[var(--plotter-orange)] text-white border-[var(--plotter-orange)]'
+                    : 'bg-[var(--plotter-card)] text-[var(--plotter-text)] border-[var(--plotter-border)] hover:border-[var(--plotter-orange)] hover:text-[var(--plotter-orange)]'
                 }`}
               >
                 <Icon className="w-3 h-3" />
@@ -112,7 +110,6 @@ function SearchContent() {
       </main>
 
       <Footer />
-      <MobileNav />
     </div>
   )
 }

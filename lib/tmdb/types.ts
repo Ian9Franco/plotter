@@ -99,7 +99,10 @@ export function isTVShow(item: MediaItem): item is TVShow {
 }
 
 // Helpers
-export function getTitle(item: MediaItem): string {
+export function getTitle(item: MediaItem, useOriginal: boolean = true): string {
+  if (useOriginal) {
+    return isMovie(item) ? (item.original_title || item.title) : (item.original_name || item.name)
+  }
   return isMovie(item) ? item.title : item.name
 }
 

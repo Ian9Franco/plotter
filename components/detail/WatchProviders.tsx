@@ -22,7 +22,7 @@ export default function WatchProvidersSection({ providers }: WatchProvidersProps
       <div className="glass-card rounded-[var(--radius-lg)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <Tv className="w-4 h-4 text-[var(--plotter-green)]" />
-          <h2 className="font-['Outfit'] font-bold text-sm text-white">Dónde ver</h2>
+          <h2 className="font-['Outfit'] font-bold text-sm text-[var(--plotter-white)]">Dónde ver</h2>
         </div>
 
         {flatrate.length > 0 && (

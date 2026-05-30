@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import Navbar from '@/components/layout/Navbar'
-import MobileNav from '@/components/layout/MobileNav'
 import Footer from '@/components/layout/Footer'
 import TrendingCarousel from '@/components/home/TrendingCarousel'
 import MediaCarousel from '@/components/media/MediaCarousel'
@@ -10,13 +8,21 @@ import { getTrendingMovies, getUpcomingMovies } from '@/lib/tmdb/movies'
 import { getTrendingTV } from '@/lib/tmdb/tv'
 import type { MediaItem, Movie } from '@/lib/tmdb/types'
 
+let cachedTrendingMovies: MediaItem[] | null = null
+let cachedTrendingTV: MediaItem[] | null = null
+let cachedUpcomingMovies: Movie[] | null = null
+
 export default function HomePage() {
-  const [trendingMovies, setTrendingMovies] = useState<MediaItem[]>([])
-  const [trendingTV, setTrendingTV] = useState<MediaItem[]>([])
-  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([])
-  const [loading,   setLoading]   = useState(true)
+  const [trendingMovies, setTrendingMovies] = useState<MediaItem[]>(cachedTrendingMovies || [])
+  const [trendingTV, setTrendingTV] = useState<MediaItem[]>(cachedTrendingTV || [])
+  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>(cachedUpcomingMovies || [])
+  const [loading,   setLoading]   = useState(!cachedTrendingMovies)
 
   useEffect(() => {
+    if (cachedTrendingMovies && cachedTrendingTV && cachedUpcomingMovies) {
+      return
+    }
+
     async function load() {
       setLoading(true)
       try {
@@ -31,6 +37,10 @@ export default function HomePage() {
         const releasedTV = tvData.filter(t => !t.first_air_date || t.first_air_date <= todayStr)
         const strictlyUpcoming = upcomingData.filter(m => m.release_date && m.release_date > todayStr)
 
+        cachedTrendingMovies = releasedMovies
+        cachedTrendingTV = releasedTV
+        cachedUpcomingMovies = strictlyUpcoming
+
         setTrendingMovies(releasedMovies)
         setTrendingTV(releasedTV)
         setUpcomingMovies(strictlyUpcoming)
@@ -44,10 +54,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-dvh bg-[var(--plotter-black)]">
-      <Suspense fallback={<div className="h-20" />}>
-        <Navbar />
-      </Suspense>
+    <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
 
       <main className="page-content w-full">
         {/* Trending 3D Carousel */}
@@ -68,9 +75,6 @@ export default function HomePage() {
       </main>
 
       <Footer />
-      <Suspense fallback={null}>
-        <MobileNav />
-      </Suspense>
     </div>
   )
 }

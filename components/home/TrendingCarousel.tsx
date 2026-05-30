@@ -7,6 +7,7 @@ import { getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import { useRouter } from 'next/navigation'
 import HeroBanner from './HeroBanner'
+import { useLanguage } from '@/hooks/useLanguage'
 
 interface TrendingCarouselProps {
   movies: MediaItem[]
@@ -16,6 +17,7 @@ interface TrendingCarouselProps {
 export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const router = useRouter()
+  const { useOriginal } = useLanguage()
 
   // Interleave movies and TV shows: movie, tv, movie, tv...
   const items = (() => {
@@ -80,7 +82,7 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
   return (
     <>
       <HeroBanner item={activeItem} />
-      <div className="w-full overflow-visible py-6 -mt-[45vh] relative z-20 pointer-events-none max-w-[1400px] mx-auto">
+      <div className="w-full overflow-visible py-6 -mt-[48vh] relative z-20 pointer-events-none max-w-[1400px] mx-auto">
         {/* 3D Carousel Container */}
         <div className="relative h-[480px] w-full flex justify-center items-center pointer-events-auto" style={{ perspective: '1200px' }}>
           <AnimatePresence initial={false} mode="popLayout">
@@ -129,7 +131,7 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                   <div className="w-full h-full relative">
                     <img
                       src={getPosterUrl(item.poster_path, 'w500')}
-                      alt={getTitle(item)}
+                      alt={getTitle(item, useOriginal)}
                       className="w-full h-full object-cover pointer-events-none"
                       draggable={false}
                     />
@@ -153,7 +155,7 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                         <span className="text-white/80 text-[12px] font-semibold">{getReleaseYear(item)}</span>
                       </div>
                       <h3 className="text-white font-bold text-[20px] leading-tight line-clamp-2 font-['Outfit'] drop-shadow-lg">
-                        {getTitle(item)}
+                        {getTitle(item, useOriginal)}
                       </h3>
                     </motion.div>
                   </div>
@@ -166,10 +168,19 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
         {/* Dots Indicator */}
         <div className="flex justify-center gap-2 mt-6">
           {items.map((_, idx) => (
-            <div 
+            <div
               key={idx}
               onClick={() => setActiveIndex(idx)}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === activeIndex ? 'w-8 bg-[var(--plotter-orange)] shadow-[0_0_10px_rgba(244,98,42,0.5)]' : 'w-2 bg-[var(--plotter-subtle)] hover:bg-[var(--plotter-muted)]'}`}
+              className="h-2 rounded-full transition-all duration-300 cursor-pointer"
+              style={idx === activeIndex ? {
+                width: '2rem',
+                backgroundColor: 'var(--plotter-orange)',
+                boxShadow: '0 0 12px rgba(244,98,42,0.6), inset 0 1px 0 rgba(255,255,255,0.2)',
+              } : {
+                width: '0.5rem',
+                boxShadow: 'var(--nm-inset)',
+                backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+              }}
             />
           ))}
         </div>

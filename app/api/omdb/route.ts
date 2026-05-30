@@ -52,7 +52,7 @@ async function getMovieRatings(imdbId: string): Promise<{
 
     const rottenTomatoes = data.Ratings?.find((r) => r.Source === "Rotten Tomatoes")?.Value || null;
     let metacritic = data.Ratings?.find((r) => r.Source === "Metacritic")?.Value || null;
-    let imdb = data.imdbRating;
+    let imdb: string | null = data.imdbRating;
 
     // Handle N/A
     if (rottenTomatoes === "N/A") return null;

@@ -7,6 +7,8 @@ import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import type { MediaItem } from '@/lib/tmdb/types'
 import { Ticket, Calendar } from 'lucide-react'
 
+import { useLanguage } from '@/hooks/useLanguage'
+
 interface MediaCardProps {
   item: MediaItem
   priority?: boolean
@@ -15,11 +17,12 @@ interface MediaCardProps {
 
 export default function MediaCard({ item, priority = false, variant = 'default' }: MediaCardProps) {
   const router    = useRouter()
+  const { useOriginal } = useLanguage()
   const [isActive, setIsActive] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const cardRef   = useRef<HTMLDivElement>(null)
 
-  const title     = getTitle(item)
+  const title     = getTitle(item, useOriginal)
   const year      = getReleaseYear(item)
   const posterUrl = getPosterUrl(item.poster_path, 'w342')
   const backdropUrl = getBackdropUrl(item.backdrop_path, 'w780')
@@ -114,19 +117,21 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
       role="button"
       aria-label={`Ver ${title}`}
     >
-      <div className={`${variant === 'wide' ? 'aspect-[16/9]' : 'aspect-[2/3]'} relative overflow-hidden bg-[#0A0F1A] rounded-[20px] border transition-all duration-500 shadow-[0_8px_24px_rgba(0,0,0,0.5)] ${
-        isActive 
-          ? isInTheaters
-            ? "border-red-500/50 shadow-[0_20px_40px_rgba(239,68,68,0.25),0_0_30px_rgba(239,68,68,0.15)] scale-[1.03]"
-            : isUpcoming
-              ? "border-amber-500/50 shadow-[0_20px_40px_rgba(245,158,11,0.25),0_0_30px_rgba(245,158,11,0.15)] scale-[1.03]"
-              : "border-primary/40 shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] scale-[1.03]" 
-          : isInTheaters
-            ? "border-red-500/20 group-hover:shadow-[0_20px_40px_rgba(239,68,68,0.2),0_0_30px_rgba(239,68,68,0.1)] group-hover:border-red-500/45"
-            : isUpcoming
-              ? "border-amber-500/20 group-hover:shadow-[0_20px_40px_rgba(245,158,11,0.2),0_0_30px_rgba(245,158,11,0.1)] group-hover:border-amber-500/45"
-              : "border-white/[0.04] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_30px_rgba(244,98,42,0.15)] group-hover:border-white/[0.08]"
-      }`}>
+      <div
+        className={`${variant === 'wide' ? 'aspect-[16/9]' : 'aspect-[2/3]'} relative overflow-hidden bg-[#0A0F1A] rounded-[20px] transition-all duration-500`}
+        style={{
+          boxShadow: isActive
+            ? isInTheaters
+              ? '0 20px 40px rgba(239,68,68,0.3), 0 0 30px rgba(239,68,68,0.15), var(--nm-raised)'
+              : isUpcoming
+                ? '0 20px 40px rgba(245,158,11,0.3), 0 0 30px rgba(245,158,11,0.15), var(--nm-raised)'
+                : 'var(--nm-glow-orange)'
+            : isHovered
+              ? 'var(--nm-glow-orange)'
+              : 'var(--nm-raised)',
+          transform: isActive ? 'scale(1.03)' : isHovered ? 'translateY(-6px)' : undefined,
+        }}
+      >
         {/* Floating status badges */}
         {isInTheaters && (
           <div className="absolute top-3 left-3 z-30 pointer-events-none">
@@ -171,7 +176,7 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
           
           {/* Title (Always visible, Centered) */}
           <h3 className={`font-bold text-[15px] leading-tight font-['Outfit'] drop-shadow-md transition-all duration-500 ${
-            isActive ? "text-primary -translate-y-0.5" : "text-white group-hover:text-primary group-hover:-translate-y-0.5"
+            isActive ? "text-white -translate-y-0.5" : "text-white group-hover:text-white group-hover:-translate-y-0.5"
           }`}>
             {title}
           </h3>

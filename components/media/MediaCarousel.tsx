@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import MediaCard from './MediaCard'
 import type { MediaItem } from '@/lib/tmdb/types'
@@ -64,7 +64,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
     }
   }
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     const container = containerRef.current
     if (container) {
       const { scrollLeft, scrollWidth, clientWidth } = container
@@ -74,7 +74,15 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
         container.scrollBy({ left: clientWidth * 0.75, behavior: 'smooth' })
       }
     }
-  }
+  }, [])
+
+  // Autoplay every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      handleNext()
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [handleNext])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return
@@ -104,9 +112,8 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
   return (
     <section className="relative group/carousel px-4 mb-12 w-full pointer-events-auto">
       {/* Title */}
-      <div className="flex items-center gap-2 mb-4 px-2">
-        <div className="w-1.5 h-6 rounded-full bg-[var(--plotter-orange)] shadow-[0_0_10px_rgba(244,98,42,0.5)]" />
-        <h2 className="text-lg md:text-xl font-black text-white font-['Outfit'] tracking-tight">
+      <div className="nm-section-title px-2">
+        <h2 className="text-lg md:text-xl font-black text-[var(--plotter-white)] font-['Outfit'] tracking-tight">
           {title}
         </h2>
       </div>
@@ -132,7 +139,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
-          className={`flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-4 px-2 no-scrollbar select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-20 px-10 -my-16 -mx-10 no-scrollbar select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none'

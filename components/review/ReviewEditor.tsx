@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear } from '@/lib/tmdb/types'
 import { generateReviewCanvas, type ReviewFormat } from '@/lib/review/canvas'
 import type { MovieDetails, TVDetails } from '@/lib/tmdb/types'
-import { Download, Check, Loader2, Sparkles, Palette, Image as ImageIcon, Trash2, Type, Eye, X } from 'lucide-react'
+import { Download, Check, Loader2, Layers, Palette, Image as ImageIcon, Trash2, Type, Eye, X } from 'lucide-react'
 
 interface ReviewEditorProps {
   item: MovieDetails | TVDetails
@@ -39,8 +40,11 @@ const FONTS = [
   { id: 'outfit', label: 'Geométrica (Outfit)', class: "font-['Outfit']" },
 ] as const
 
+import { useLanguage } from '@/hooks/useLanguage'
+
 export default function ReviewEditor({ item }: ReviewEditorProps) {
-  const title = getTitle(item)
+  const { useOriginal } = useLanguage()
+  const title = getTitle(item, useOriginal)
   const year  = getReleaseYear(item)
 
   const [rating,       setRating]       = useState(0)
@@ -156,7 +160,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       
       {texture === 'cruces' && (
         <div 
-          className="absolute inset-0 z-[1] opacity-[0.05]"
+          className="absolute inset-0 z-[1] opacity-[0.25]"
           style={{
             backgroundImage: 'radial-gradient(circle, white 2px, transparent 2px)',
             backgroundSize: '32px 32px'
@@ -165,7 +169,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       )}
       {texture === 'grano' && (
         <div 
-          className="absolute inset-0 z-[1] opacity-[0.04]"
+          className="absolute inset-0 z-[1] opacity-[0.16]"
           style={{
             backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")'
           }}
@@ -173,7 +177,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       )}
       {texture === 'lineas' && (
         <div 
-          className="absolute inset-0 z-[1] opacity-[0.04]"
+          className="absolute inset-0 z-[1] opacity-[0.14]"
           style={{
             backgroundImage: 'linear-gradient(to right, white 1px, transparent 1px)',
             backgroundSize: '6px 100%'
@@ -185,7 +189,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       <div className="absolute inset-0 z-[2] bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_30%,rgba(0,0,0,0.9)_100%)]" />
 
       {/* Central Card container with extreme 3D shadow and glowing borders */}
-      <div className={`w-full h-[84%] rounded-[32px] mt-14 mb-4 p-5 pb-6 flex flex-col items-center justify-between relative z-10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95)] bg-gradient-to-b ${activeColorTheme.bg} border-2 ${activeColorTheme.border}`}>
+      <div className={`w-full h-auto min-h-[45%] rounded-[32px] mt-14 mb-4 p-5 pb-6 flex flex-col items-center justify-center relative z-10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95)] bg-gradient-to-b ${activeColorTheme.bg} border-2 ${activeColorTheme.border}`}>
         
         {/* Central Floating Poster with strong 3D elevation */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-[114px] h-[171px] rounded-2xl overflow-hidden shadow-[0_18px_36px_rgba(0,0,0,0.9)] border-2 border-white/20 bg-gray-900 shrink-0">
@@ -230,9 +234,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
           <div className="w-[85%] h-[2px] bg-white/20 my-4 shrink-0 shadow-sm" />
 
           {/* Review Text — uses currently selected font families */}
-          <p className={`text-white/90 text-[11.5px] leading-relaxed line-clamp-5 px-1 overflow-y-auto italic break-all overflow-wrap-anywhere ${activeFontTheme.class}`}>
-            {reviewText.trim() ? `"${reviewText}"` : 'Escribe tu opinión a la derecha y se actualizará aquí...'}
-          </p>
+          {reviewText.trim() && (
+            <p className={`w-full text-white/90 leading-relaxed px-1 mb-5 italic break-all whitespace-pre-wrap ${activeFontTheme.class} ${
+              reviewText.length > 500 ? 'text-[8px]' : 
+              reviewText.length > 300 ? 'text-[9.5px]' : 
+              reviewText.length > 150 ? 'text-[10.5px]' : 
+              reviewText.length > 80 ? 'text-[11.5px]' : 'text-[13px]'
+            }`}>
+              {reviewText.trim()}
+            </p>
+          )}
         </div>
 
         {/* Reviewer signature */}
@@ -251,53 +262,69 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   return (
     <div className="px-4 mt-6 pb-20 relative animate-fade-up delay-200">
       
-      {/* FLOATING PREVIEW TOGGLE BUTTON FOR MOBILE */}
-      <div className="lg:hidden fixed bottom-24 right-4 z-40">
-        <button
-          type="button"
-          onClick={() => setIsPreviewOpen(true)}
-          className="flex items-center gap-2 bg-[var(--plotter-orange)] hover:bg-[#d84e1b] text-white font-bold text-sm px-4 py-3 rounded-full shadow-[0_8px_24px_rgba(244,98,42,0.4)] border border-white/10 active:scale-95 transition-all"
-        >
-          <Eye className="w-4 h-4" />
-          Ver Preview
-        </button>
-      </div>
 
-      {/* MOBILE FULL-SCREEN SIDEBAR DRAWER (GLASSMORPHIC) */}
-      <div className={`fixed inset-0 z-50 lg:hidden flex justify-end transition-all duration-300 ${
-        isPreviewOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      }`}>
-        {/* Backdrop overlay */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsPreviewOpen(false)} />
-        
-        {/* Slide-in container */}
-        <div className={`w-[85%] max-w-[360px] h-full bg-[#070b12]/95 border-l border-white/10 p-5 flex flex-col items-center justify-between z-10 transition-transform duration-300 ${
-          isPreviewOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          <div className="w-full flex items-center justify-between border-b border-white/10 pb-3 mb-2 shrink-0">
-            <span className="font-['Outfit'] font-black text-white text-sm">Vista Previa</span>
-            <button 
-              type="button" 
+
+      {/* MOBILE FULL-SCREEN SIDEBAR DRAWER (SLIDE-DOWN / SWIPE-UP TO SAVE) */}
+      <AnimatePresence>
+        {isPreviewOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-start">
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
               onClick={() => setIsPreviewOpen(false)}
-              className="p-1.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white"
+            />
+            
+            {/* Slide-down container */}
+            <motion.div
+              drag="y"
+              dragConstraints={{ top: -400, bottom: 0 }}
+              dragElastic={{ top: 0.1, bottom: 0.2 }}
+              onDragEnd={(e, info) => {
+                // Close if swiped up
+                if (info.offset.y < -85 || info.velocity.y < -250) {
+                  setIsPreviewOpen(false)
+                }
+              }}
+              initial={{ y: '-100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="w-full bg-[#070b12]/98 border-b border-white/10 p-5 rounded-b-[32px] flex flex-col items-center justify-between z-10 shadow-2xl touch-none"
+              style={{ maxHeight: '82vh' }}
             >
-              <X className="w-4 h-4" />
-            </button>
+              {/* Drag Handle Indicator */}
+              <div className="w-12 h-1 bg-white/20 rounded-full mb-3 shrink-0" />
+
+              <div className="w-full flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
+                <span className="font-['Outfit'] font-black text-white text-xs tracking-wider uppercase">Vista Previa</span>
+                <span className="text-[10px] text-[var(--plotter-muted)] font-medium">Desliza hacia arriba para guardar</span>
+                <button 
+                  type="button" 
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="p-1.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 flex items-center justify-center w-full overflow-hidden py-4">
+                {renderLivePreviewCard('scale-[0.8] origin-center')}
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="w-full py-3 bg-[var(--plotter-orange)] hover:bg-[#d84e1b] text-white font-black rounded-xl text-xs border border-white/10 shrink-0 transition-all mt-2 active:scale-98"
+              >
+                Guardar y continuar escribiendo
+              </button>
+            </motion.div>
           </div>
-          
-          <div className="flex-1 flex items-center justify-center w-full">
-            {renderLivePreviewCard('scale-[0.9] origin-center')}
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => setIsPreviewOpen(false)}
-            className="w-full py-3 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-xs border border-white/5 mt-4 shrink-0 transition-all"
-          >
-            Listo, seguir escribiendo
-          </button>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
@@ -310,17 +337,22 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         </div>
 
         {/* CONTROLS FORM */}
-        <div className="lg:col-span-7 glass-card rounded-[var(--radius-xl)] p-5 lg:p-6 space-y-6">
+        <div
+          className="lg:col-span-7 rounded-3xl p-5 lg:p-6 space-y-6"
+          style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
+        >
           
-          <div className="flex items-center justify-between pb-2 border-b border-[var(--plotter-border)]">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-6 rounded-full bg-[var(--plotter-orange)]" />
-              <h2 className="font-['Outfit'] font-extrabold text-white text-lg flex items-center gap-2">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--plotter-border)]">
+            <div className="nm-section-title mb-0">
+              <h2 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg">
                 Personaliza tu Review
               </h2>
             </div>
             
-            <div className="bg-[var(--plotter-orange)] text-white font-['Outfit'] font-black px-3 py-1 rounded-full text-xs animate-bounce shadow-md">
+            <div
+              className="text-white font-['Outfit'] font-black px-4 py-1.5 rounded-full text-xs"
+              style={{ backgroundColor: 'var(--plotter-orange)', boxShadow: 'var(--nm-glow-orange)' }}
+            >
               {rating.toFixed(2)} / 5.00
             </div>
           </div>
@@ -334,9 +366,10 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 Calificación (Arrastra o haz tap con precisión decimal 4.5, 4.25...)
               </label>
               
-              <div 
+              <div
                 ref={starsContainerRef}
-                className="w-full max-w-[280px] h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between px-4 cursor-pointer select-none touch-none hover:border-[var(--plotter-border-glow)] transition-all active:scale-[0.99]"
+                className="w-full max-w-[280px] h-12 rounded-2xl flex items-center justify-between px-4 cursor-pointer select-none touch-none transition-all active:scale-[0.99]"
+                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
                 onMouseDown={(e) => handleStarGesture(e.clientX)}
                 onMouseMove={(e) => e.buttons === 1 && handleStarGesture(e.clientX)}
                 onTouchMove={handleTouchMove}
@@ -345,7 +378,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 {Array.from({ length: 5 }).map((_, i) => {
                   const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100))
                   return (
-                    <div key={i} className="relative text-2xl text-white/10 select-none">
+                    <div key={i} className="relative text-2xl text-[var(--plotter-muted)]/20 select-none">
                       ★
                       <div 
                         className="absolute inset-0 text-[#22c55e] overflow-hidden"
@@ -370,7 +403,8 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 onChange={e => setReviewText(e.target.value.slice(0, 300))}
                 placeholder={`¿Qué te pareció "${title}"?`}
                 rows={3}
-                className="w-full bg-[var(--plotter-surface)] border border-[var(--plotter-border)] rounded-[var(--radius-md)] px-4 py-3 text-white text-sm placeholder:text-[var(--plotter-subtle)] resize-none outline-none focus:border-[var(--plotter-border-glow)] transition-all"
+                className="w-full rounded-2xl px-4 py-3 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] resize-none outline-none transition-all"
+                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
               />
               <div className="flex justify-between text-[10px] text-[var(--plotter-subtle)] mt-1">
                 <span>Ajuste automático en palabras largas</span>
@@ -392,11 +426,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     key={f.id}
                     type="button"
                     onClick={() => setDescFont(f.id)}
-                    className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                      descFont === f.id
-                        ? 'bg-white/10 text-white border-[var(--plotter-border-glow)] shadow-md'
-                        : 'bg-transparent text-[var(--plotter-muted)] border-[var(--plotter-border)] hover:border-white/10 hover:text-white'
-                    }`}
+                    className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    style={descFont === f.id ? {
+                      boxShadow: 'var(--nm-glow-orange)',
+                      backgroundColor: 'var(--plotter-orange)',
+                      color: 'white',
+                    } : {
+                      boxShadow: 'var(--nm-pill)',
+                      backgroundColor: 'var(--plotter-card)',
+                      color: 'var(--plotter-muted)',
+                    }}
                   >
                     <span className={`inline-block mr-1.5 ${f.class}`}>Aa</span>
                     {f.label}
@@ -416,7 +455,8 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 onChange={e => setReviewerName(e.target.value)}
                 placeholder="Ej: Martín"
                 maxLength={20}
-                className="w-full bg-[var(--plotter-surface)] border border-[var(--plotter-border)] rounded-[var(--radius-md)] px-4 py-2.5 text-white text-sm placeholder:text-[var(--plotter-subtle)] outline-none focus:border-[var(--plotter-border-glow)] transition-all"
+                className="w-full rounded-2xl px-4 py-2.5 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] outline-none transition-all"
+                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
               />
             </div>
           </div>
@@ -436,7 +476,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               </div>
               
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold border border-white/10 cursor-pointer transition-all">
+                <label className="flex items-center gap-2 px-4 py-2.5 bg-[var(--plotter-card)] hover:bg-[var(--plotter-card-hover)] text-[var(--plotter-white)] rounded-xl text-xs font-bold border border-[var(--plotter-border)] cursor-pointer transition-all">
                   <ImageIcon className="w-4 h-4" />
                   Elegir foto de galería
                   <input
@@ -474,13 +514,18 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     key={c.id}
                     type="button"
                     onClick={() => setCardColor(c.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                      cardColor === c.id
-                        ? 'bg-white/10 text-white border-[var(--plotter-border-glow)] shadow-md shadow-black/30'
-                        : 'bg-transparent text-[var(--plotter-muted)] border-[var(--plotter-border)] hover:border-white/10 hover:text-white'
-                    }`}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    style={cardColor === c.id ? {
+                      boxShadow: 'var(--nm-glow-orange)',
+                      backgroundColor: 'var(--plotter-orange)',
+                      color: 'white',
+                    } : {
+                      boxShadow: 'var(--nm-pill)',
+                      backgroundColor: 'var(--plotter-card)',
+                      color: 'var(--plotter-muted)',
+                    }}
                   >
-                    <span className={`w-3 h-3 rounded-full ${c.dot}`} />
+                    <span className={`w-3 h-3 rounded-full ${c.dot} ring-1 ring-white/10`} />
                     {c.label}
                   </button>
                 ))}
@@ -490,7 +535,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
             {/* Textures */}
             <div>
               <div className="flex items-center gap-1.5 mb-2.5">
-                <Sparkles className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                <Layers className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
                 <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
                   Texturas Alternativas
                 </label>
@@ -502,11 +547,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     type="button"
                     onClick={() => setTexture(t.id)}
                     disabled={texture === 'custom'}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                      texture === t.id
-                        ? 'bg-white/10 text-white border-[var(--plotter-border-glow)]'
-                        : 'bg-transparent text-[var(--plotter-muted)] border-[var(--plotter-border)] hover:border-white/10 hover:text-white'
-                    } ${texture === 'custom' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${texture === 'custom' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    style={texture === t.id ? {
+                      boxShadow: 'var(--nm-inset)',
+                      backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+                      color: 'var(--plotter-orange)',
+                    } : {
+                      boxShadow: 'var(--nm-pill)',
+                      backgroundColor: 'var(--plotter-card)',
+                      color: 'var(--plotter-muted)',
+                    }}
                   >
                     {t.label}
                   </button>
@@ -526,11 +576,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     id={`format-${f.id.replace(':','x')}`}
                     type="button"
                     onClick={() => setFormat(f.id)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                      format === f.id
-                        ? 'bg-[var(--plotter-orange)] text-white border-transparent shadow-lg shadow-[rgba(244,98,42,0.25)]'
-                        : 'bg-transparent text-[var(--plotter-muted)] border-[var(--plotter-border)] hover:border-white/10 hover:text-white'
-                    }`}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    style={format === f.id ? {
+                      boxShadow: 'var(--nm-glow-orange)',
+                      backgroundColor: 'var(--plotter-orange)',
+                      color: 'white',
+                    } : {
+                      boxShadow: 'var(--nm-pill)',
+                      backgroundColor: 'var(--plotter-card)',
+                      color: 'var(--plotter-muted)',
+                    }}
                   >
                     {f.label}
                   </button>
@@ -542,34 +597,45 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
             </div>
           </div>
 
+          {/* Mobile Preview Button above Download on mobile */}
+          <button
+            type="button"
+            onClick={() => setIsPreviewOpen(true)}
+            className="lg:hidden w-full py-3.5 mb-3 text-[var(--plotter-white)] font-bold rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+            style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+          >
+            <Eye className="w-4 h-4 text-[var(--plotter-orange)]" />
+            ver vista previa
+          </button>
+
           {/* Action Trigger Button */}
           <button
             id="download-review-btn"
             type="button"
             onClick={handleGenerate}
             disabled={downloading || rating === 0}
-            className={`w-full py-4 rounded-[var(--radius-xl)] font-['Outfit'] font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 ${
-              rating === 0
-                ? 'bg-[var(--plotter-surface)] text-[var(--plotter-subtle)] border border-[var(--plotter-border)] cursor-not-allowed'
-                : 'btn-primary'
+            className={`w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 text-white ${
+              rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
             }`}
+            style={rating === 0 ? {
+              boxShadow: 'var(--nm-inset)',
+              backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+              color: 'var(--plotter-muted)',
+            } : {
+              boxShadow: 'var(--nm-glow-orange)',
+              backgroundColor: 'var(--plotter-orange)',
+            }}
           >
             {downloading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />Generando tu review...</>
+              <><Loader2 className="w-4 h-4 animate-spin" />Generando...</>
             ) : (
-              <><Sparkles className="w-4 h-4" />Crear Imagen para Instagram</>
+              <><Download className="w-4 h-4" />descargar review</>
             )}
           </button>
 
            {errorMsg && (
             <p className="text-center text-red-400 font-bold text-xs bg-red-950/20 border border-red-500/20 py-2.5 px-4 rounded-xl animate-shake mt-2">
               {errorMsg}
-            </p>
-          )}
-
-          {rating === 0 && (
-            <p className="text-center text-[var(--plotter-subtle)] text-[11px]">
-              Arrastra las estrellas arriba para habilitar
             </p>
           )}
         </div>
@@ -582,66 +648,69 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
           {/* Backdrop blur close action */}
           <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
           
-          <div className="relative bg-[#0d1016] border border-white/10 w-full max-w-[400px] rounded-[32px] p-6 text-center z-10 shadow-2xl flex flex-col items-center">
-            
+          <div
+            className="relative w-full max-w-[400px] rounded-3xl p-6 text-center z-10 flex flex-col items-center"
+            style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
+          >
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full transition-all border border-white/5"
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[var(--plotter-muted)] hover:text-white transition-all active:scale-90"
+              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
             >
-              <X className="w-4.5 h-4.5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <h3 className="font-['Outfit'] font-extrabold text-white text-lg mb-2">¡Imagen lista!</h3>
+            <h3 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg mb-2">¡Imagen lista!</h3>
             
-            {/* Base64 preview for mobile long-press */}
-            <div className="w-full max-h-[360px] aspect-[9/16] overflow-y-auto rounded-2xl border border-white/10 shadow-lg my-4 relative bg-[#0e1015] p-1 flex justify-center items-center">
+            {/* Preview image */}
+            <div
+              className="w-full max-h-[360px] aspect-[9/16] overflow-y-auto rounded-2xl my-4 relative flex justify-center items-center p-1"
+              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+            >
               <img
-                src={generatedImg}
+                src={generatedImg!}
                 alt="Plotter Review"
                 className="max-w-full max-h-full object-contain rounded-xl select-all touch-auto cursor-pointer"
               />
             </div>
 
-            {/* Mobile vs Desktop responsive instructions */}
-            <div className="bg-white/5 rounded-2xl p-4 w-full mb-5 border border-white/5 text-left text-xs space-y-2">
-              <p className="text-gray-300 font-bold flex items-center gap-1.5">
-                📱 Para celulares (iPhone/Android):
-              </p>
+            {/* Instructions */}
+            <div
+              className="p-4 w-full mb-5 text-left text-xs space-y-2 rounded-2xl"
+              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+            >
+              <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">📱 Para celulares (iPhone/Android):</p>
               <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
-                Mantén presionada la imagen de arriba y selecciona <strong className="text-white">"Guardar imagen"</strong> o <strong className="text-white">"Agregar a Fotos"</strong>.
+                Mantén presionada la imagen y selecciona <strong className="text-[var(--plotter-white)]">"Guardar imagen"</strong>.
               </p>
-              
-              <div className="w-full h-[1px] bg-white/10 my-2" />
-              
-              <p className="text-gray-300 font-bold flex items-center gap-1.5">
-                💻 Para computadoras:
-              </p>
+              <div className="w-full h-px" style={{ backgroundColor: 'var(--plotter-border)' }} />
+              <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">💻 Para computadoras:</p>
               <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
-                Haz clic en el botón de descarga de abajo para guardar tu archivo.
+                Usa el botón de descarga abajo.
               </p>
             </div>
 
-            {/* Responsive Actions */}
+            {/* Actions */}
             <div className="flex gap-3 w-full shrink-0">
               <button
                 type="button"
                 onClick={forceDownload}
-                className="flex-1 py-3.5 bg-[var(--plotter-orange)] hover:bg-[#d84e1b] text-white font-['Outfit'] font-black rounded-[var(--radius-xl)] text-xs flex items-center justify-center gap-2 border border-white/10 active:scale-95 transition-all shadow-lg"
+                className="flex-1 py-3.5 text-white font-['Outfit'] font-black rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
               >
                 <Download className="w-4 h-4" />
                 Descargar Directo
               </button>
-              
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="py-3.5 px-5 bg-white/5 hover:bg-white/10 text-white font-bold rounded-[var(--radius-xl)] text-xs border border-white/5 active:scale-95 transition-all"
+                className="py-3.5 px-5 text-[var(--plotter-white)] font-bold rounded-2xl text-xs active:scale-95 transition-all"
+                style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
               >
                 Listo
               </button>
             </div>
-
           </div>
         </div>
       )}

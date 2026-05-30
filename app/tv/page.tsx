@@ -1,32 +1,49 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import Navbar from '@/components/layout/Navbar'
-import MobileNav from '@/components/layout/MobileNav'
+import { useSearchParams } from 'next/navigation'
 import Footer from '@/components/layout/Footer'
 import MediaGrid from '@/components/media/MediaGrid'
-import { getTrendingTV, getOnAirTop } from '@/lib/tmdb/tv'
+import HeroBanner from '@/components/home/HeroBanner'
+import MediaCarousel from '@/components/media/MediaCarousel'
+import NeoBrutalistCarousel from '@/components/media/NeoBrutalistCarousel'
+import { getTrendingTV, getOnAirTop, getOnAirTV, discoverTV } from '@/lib/tmdb/tv'
 import type { TVShow } from '@/lib/tmdb/types'
-import { Sparkles, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function TVPage() {
-  const [tvShows, setTvShows] = useState<TVShow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [featured, setFeatured] = useState<TVShow | null>(null)
-  const [selectedGenre, setSelectedGenre] = useState('Todo')
-  const [isOpen, setIsOpen] = useState(false)
+let cachedTvShows: TVShow[] | null = null
+let cachedFeaturedTv: TVShow | null = null
+let cachedOnAirTv: TVShow[] | null = null
+
+function TVPageContent() {
+  const [tvShows, setTvShows] = useState<TVShow[]>(cachedTvShows || [])
+  const [loading, setLoading] = useState(!cachedTvShows)
+  const [featured, setFeatured] = useState<TVShow | null>(cachedFeaturedTv)
+  const [onAirTv, setOnAirTv] = useState<TVShow[]>(cachedOnAirTv || [])
+  
+  const searchParams = useSearchParams()
+  const selectedGenre = searchParams.get('genre') || 'Todo'
 
   useEffect(() => {
+    if (cachedTvShows) return
+
     async function load() {
       setLoading(true)
       try {
-        const [trendingData, topTV] = await Promise.all([
+        const [trendingData, topTV, onAirData] = await Promise.all([
           getTrendingTV(),
           getOnAirTop(),
+          getOnAirTV(),
         ])
-        setTvShows(trendingData)
-        if (topTV) setFeatured(topTV)
+        
+        cachedTvShows = trendingData
+        if (topTV) cachedFeaturedTv = topTV
+        cachedOnAirTv = onAirData
+        
+        setTvShows(cachedTvShows)
+        setFeatured(cachedFeaturedTv)
+        setOnAirTv(cachedOnAirTv)
       } catch (err) {
         console.error('Error loading TV shows:', err)
       } finally {
@@ -46,127 +63,91 @@ export default function TVPage() {
     'Sci-Fi & Fantasy': 10765,
   }
 
-  const filteredTV = selectedGenre === 'Todo'
-    ? tvShows
-    : tvShows.filter(t => t.genre_ids?.includes(GENRE_MAP[selectedGenre]))
+  useEffect(() => {
+    async function fetchGenreData() {
+      if (!cachedTvShows) return // Wait for initial load
+      
+      if (selectedGenre === 'Todo') {
+        setTvShows(cachedTvShows)
+        setFeatured(cachedFeaturedTv)
+        setOnAirTv(cachedOnAirTv || [])
+        return
+      }
+      
+      const genreId = GENRE_MAP[selectedGenre]
+      if (!genreId) return
+
+      let localFiltered = cachedTvShows.filter(t => t.genre_ids?.includes(genreId))
+      
+      if (localFiltered.length < 10) {
+        setLoading(true)
+        try {
+          const discoverData = await discoverTV(genreId)
+          if (discoverData && discoverData.length > 0) {
+             setTvShows(discoverData)
+             setFeatured(discoverData[0] || null)
+             setOnAirTv(discoverData.slice(1, 15))
+          }
+        } catch (err) {
+          console.error(err)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+         setTvShows(localFiltered)
+         setFeatured(localFiltered[0] || null)
+         const localOnAir = (cachedOnAirTv || []).filter(t => t.genre_ids?.includes(genreId))
+         setOnAirTv(localOnAir.length > 5 ? localOnAir : localFiltered.slice(1))
+      }
+    }
+    fetchGenreData()
+  }, [selectedGenre, loading])
+
+  const filteredTV = tvShows
 
   return (
-    <div className="min-h-dvh bg-[var(--plotter-black)]">
-      <Suspense fallback={<div className="h-20" />}>
-        <Navbar />
-      </Suspense>
+    <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
+      <main className="page-content w-full flex-1">
 
-      <main className="page-content pt-20 max-w-[1400px] mx-auto w-full">
-        {/* Page Header */}
-        <div className="px-4 mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-white font-['Outfit'] font-black text-xl leading-tight">
-              Series
-            </h1>
-            <p className="text-[var(--plotter-muted)] text-xs">
-              Descubrí las mejores series del momento
-            </p>
-          </div>
-        </div>
 
-        {/* Filter Dropdown */}
-        <div className="px-4 mb-6 relative z-30">
-          <div className="relative inline-block text-left">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-lg)] bg-[var(--plotter-card)]/40 hover:bg-[var(--plotter-card)]/60 text-[var(--plotter-white)] text-sm font-medium border border-[var(--plotter-border)] shadow-[var(--nm-raised-sm)] transition-all duration-300 group cursor-pointer"
-            >
-              <span className="text-[var(--plotter-muted)]">Género:</span>
-              <span className="text-[var(--plotter-blue)] font-bold">{selectedGenre}</span>
-              <ChevronDown className={`w-4 h-4 ml-1 text-[var(--plotter-muted)] transition-transform duration-300 group-hover:text-[var(--plotter-white)] ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
+        {/* Neo Brutalist Carousel (Trending) - Overlapping HeroBanner */}
+        {!loading && tvShows.length > 0 && (
+          <NeoBrutalistCarousel items={tvShows} />
+        )}
 
-            <AnimatePresence>
-              {isOpen && (
-                <>
-                  {/* Backdrop overlay to close when clicking outside */}
-                  <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-56 rounded-[var(--radius-xl)] bg-[var(--plotter-card)] border border-[var(--plotter-border)] shadow-2xl z-40 overflow-hidden backdrop-blur-xl"
-                  >
-                    <div className="py-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                      {['Todo', 'Acción y Aventura', 'Animación', 'Comedia', 'Crimen', 'Documental', 'Drama', 'Sci-Fi & Fantasy'].map(tab => (
-                        <button
-                          key={tab}
-                          onClick={() => {
-                            setSelectedGenre(tab)
-                            setIsOpen(false)
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 hover:bg-[var(--plotter-card-hover)] flex items-center justify-between cursor-pointer ${
-                            selectedGenre === tab 
-                              ? 'text-[var(--plotter-blue)] font-bold' 
-                              : 'text-[var(--plotter-muted)] hover:text-[var(--plotter-white)]'
-                          }`}
-                        >
-                          {tab}
-                          {selectedGenre === tab && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--plotter-blue)] shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Featured Card (Top TV Show) */}
-        {!loading && featured && (
-          <div className="px-4 mb-6">
-            <div 
-              className="relative h-[220px] rounded-[var(--radius-xl)] overflow-hidden cursor-pointer nm-raised-lg group"
-              onClick={() => window.location.href = `/tv/${featured.id}`}
-            >
-              {featured.backdrop_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w780${featured.backdrop_path}`}
-                  alt={featured.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#060A12] via-black/40 to-transparent" />
-              <div className="absolute bottom-0 inset-x-0 p-4 flex flex-col gap-1">
-                <span className="badge badge-tv self-start mb-1 flex items-center gap-1 shadow-sm">
-                  <Sparkles className="w-2.5 h-2.5" /> Destacada hoy
-                </span>
-                <h2 className="text-white font-['Outfit'] font-bold text-lg leading-tight truncate">
-                  {featured.name}
-                </h2>
-                <p className="text-white/60 text-xs line-clamp-1">
-                  {featured.overview}
-                </p>
-              </div>
-            </div>
+        {/* Latest Releases Carousel */}
+        {!loading && onAirTv.length > 0 && (
+          <div className="max-w-[1400px] mx-auto px-6 mt-16 pointer-events-auto relative z-20">
+             <MediaCarousel items={onAirTv} title="Últimas Lanzadas" variant="wide" />
           </div>
         )}
 
         {/* TV Shows Grid */}
-        <MediaGrid
-          items={filteredTV}
-          title={selectedGenre === 'Todo' ? "Tendencias de la semana" : `Series de ${selectedGenre}`}
-          loading={loading}
-          columns={3}
-        />
+        {selectedGenre !== 'Todo' && (
+          <div className="max-w-[1400px] mx-auto w-full pt-16">
+            <MediaGrid
+              items={filteredTV}
+              title={`Series de ${selectedGenre}`}
+              loading={loading}
+              columns={3}
+            />
+          </div>
+        )}
       </main>
 
       <Footer />
-      <Suspense fallback={null}>
-        <MobileNav />
-      </Suspense>
     </div>
+  )
+}
+
+export default function TVPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-full bg-[var(--plotter-black)] flex items-center justify-center pt-32">
+        <div className="spinner" />
+      </div>
+    }>
+      <TVPageContent />
+    </Suspense>
   )
 }

@@ -11,6 +11,14 @@ export async function getOnAirTop(): Promise<TVShow | null> {
   return apiFetch<TVShow | null>('top-rated-air', {}, { revalidate: 3600 })
 }
 
+export async function getOnAirTV(): Promise<TVShow[]> {
+  return apiFetch<TVShow[]>('on-air', {}, { revalidate: 3600 })
+}
+
+export async function discoverTV(genreId: number): Promise<TVShow[]> {
+  return apiFetch<TVShow[]>('discover-tv', { genreId }, { revalidate: 3600 })
+}
+
 export async function searchTV(query: string): Promise<TVShow[]> {
   return apiFetch<TVShow[]>('search', { query, type: 'tv' })
 }

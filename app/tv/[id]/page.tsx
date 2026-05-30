@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Navbar from '@/components/layout/Navbar'
-import MobileNav from '@/components/layout/MobileNav'
 import Footer from '@/components/layout/Footer'
 import DetailHero from '@/components/detail/DetailHero'
 import WatchProvidersSection from '@/components/detail/WatchProviders'
@@ -52,10 +50,8 @@ export default function TVPage({ params }: TVPageProps) {
   }
 
   return (
-    <div className="min-h-dvh bg-[var(--plotter-black)]">
-      <Navbar />
-
-      <main className="page-content pt-0">
+    <div className="min-h-full flex flex-col bg-[var(--plotter-black)]">
+      <main className="page-content pt-0 flex-1 w-full pb-10">
         <DetailHero
           item={show}
           onWriteReview={() => {
@@ -111,25 +107,13 @@ export default function TVPage({ params }: TVPageProps) {
 
         {/* Review section */}
         <div id="review-section">
-          {showReview ? (
+          {showReview && (
             <ReviewEditor item={show} />
-          ) : (
-            <div className="px-4 mt-6">
-              <button
-                id="open-review-section-btn"
-                onClick={() => setShowReview(true)}
-                className="w-full py-4 rounded-[var(--radius-xl)] border border-dashed border-[var(--plotter-border)] text-[var(--plotter-muted)] text-sm hover:border-[var(--plotter-border-glow)] hover:text-[var(--plotter-orange)] transition-all duration-300 flex items-center justify-center gap-2"
-              >
-                <span className="text-lg">✏️</span>
-                Escribir mi reseña
-              </button>
-            </div>
           )}
         </div>
       </main>
 
       <Footer />
-      <MobileNav />
     </div>
   )
 }

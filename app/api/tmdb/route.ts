@@ -47,20 +47,35 @@ export async function GET(request: NextRequest) {
 
       /* ─── Trending ───────────────────────────────────────────── */
       case 'trending': {
-        const data = await tmdb(`/trending/${type}/day?language=es-ES`, cache1h)
-        return NextResponse.json(data.results?.slice(0, 22) || [])
+        const [p1, p2, p3] = await Promise.all([
+          tmdb(`/trending/${type}/day?language=es-ES&page=1`, cache1h),
+          tmdb(`/trending/${type}/day?language=es-ES&page=2`, cache1h),
+          tmdb(`/trending/${type}/day?language=es-ES&page=3`, cache1h)
+        ])
+        const combined = [...(p1.results || []), ...(p2.results || []), ...(p3.results || [])]
+        return NextResponse.json(combined)
       }
 
       /* ─── Upcoming Movies ────────────────────────────────────── */
       case 'upcoming': {
-        const data = await tmdb(`/movie/upcoming?language=es-ES&page=1`, cache1h)
-        return NextResponse.json(data.results || [])
+        const [p1, p2, p3] = await Promise.all([
+          tmdb(`/movie/upcoming?language=es-ES&page=1`, cache1h),
+          tmdb(`/movie/upcoming?language=es-ES&page=2`, cache1h),
+          tmdb(`/movie/upcoming?language=es-ES&page=3`, cache1h)
+        ])
+        const combined = [...(p1.results || []), ...(p2.results || []), ...(p3.results || [])]
+        return NextResponse.json(combined)
       }
 
       /* ─── Now Playing Movies ─────────────────────────────────── */
       case 'now-playing': {
-        const data = await tmdb('/movie/now_playing?language=es-ES&page=1', cache1h)
-        return NextResponse.json(data.results || [])
+        const [p1, p2, p3] = await Promise.all([
+          tmdb('/movie/now_playing?language=es-ES&page=1', cache1h),
+          tmdb('/movie/now_playing?language=es-ES&page=2', cache1h),
+          tmdb('/movie/now_playing?language=es-ES&page=3', cache1h)
+        ])
+        const combined = [...(p1.results || []), ...(p2.results || []), ...(p3.results || [])]
+        return NextResponse.json(combined)
       }
 
 
@@ -81,6 +96,17 @@ export async function GET(request: NextRequest) {
           .filter((s: any) => s.original_language !== 'zh')
           .sort((a: any, b: any) => b.vote_average - a.vote_average)
         return NextResponse.json(sorted[0] || null)
+      }
+
+      /* ─── On Air (List) ──────────────────────────────────────── */
+      case 'on-air': {
+        const [p1, p2, p3] = await Promise.all([
+          tmdb('/tv/on_the_air?language=es-ES&page=1', cache1h),
+          tmdb('/tv/on_the_air?language=es-ES&page=2', cache1h),
+          tmdb('/tv/on_the_air?language=es-ES&page=3', cache1h)
+        ])
+        const combined = [...(p1.results || []), ...(p2.results || []), ...(p3.results || [])]
+        return NextResponse.json(combined)
       }
 
       /* ─── Movie Details ──────────────────────────────────────── */

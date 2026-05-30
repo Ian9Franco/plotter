@@ -161,7 +161,7 @@ async function drawBgTexture(
   }
 
   if (texture === 'cruces') {
-    ctx.fillStyle = 'rgba(255,255,255,0.025)'
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'
     const spacing = 70
     for (let x = spacing / 2; x < w; x += spacing) {
       for (let y = spacing / 2; y < h; y += spacing) {
@@ -170,14 +170,14 @@ async function drawBgTexture(
       }
     }
   } else if (texture === 'grano') {
-    ctx.fillStyle = 'rgba(255,255,255,0.015)'
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'
     for (let i = 0; i < 40000; i++) {
       const x = Math.random() * w
       const y = Math.random() * h
       ctx.fillRect(x, y, 1.5, 1.5)
     }
   } else if (texture === 'lineas') {
-    ctx.fillStyle = 'rgba(255,255,255,0.012)'
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'
     for (let x = 0; x < w; x += 6) {
       ctx.fillRect(x, 0, 1.5, h)
     }

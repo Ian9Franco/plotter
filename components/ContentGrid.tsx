@@ -2,6 +2,7 @@ import React from 'react';
 import { Movie, TVShow } from '../types/movie';
 import { getImageUrl } from '../lib/tmdb';
 import { Star, Calendar } from 'lucide-react';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface ContentGridProps {
   items: (Movie | TVShow)[];
@@ -9,7 +10,12 @@ interface ContentGridProps {
 }
 
 const ContentGrid: React.FC<ContentGridProps> = ({ items, onItemSelect }) => {
+  const { useOriginal } = useLanguage();
+
   const getTitle = (item: Movie | TVShow): string => {
+    if (useOriginal) {
+      return 'title' in item ? ((item as any).original_title || item.title) : ((item as any).original_name || item.name);
+    }
     return 'title' in item ? item.title : item.name;
   };
 

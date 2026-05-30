@@ -7,6 +7,12 @@
 /* ── Google Fonts ──────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* ── Logo Theme Utilities ─────────────────────────────────────── */
+.logo-white { display: none; }
+.logo-black { display: block; }
+[data-theme='coffee'] .logo-white { display: block; }
+[data-theme='coffee'] .logo-black { display: none; }
+
 /* ── Design Tokens ─────────────────────────────────────────────── */
 :root {
   /* Core palette (Modern / Light) */
@@ -18,6 +24,9 @@
   --plotter-card-hover:  #F1F5F9;
   --plotter-border:      rgba(0,0,0,0.05);
   --plotter-border-glow: rgba(244,98,42,0.30);
+  
+  --plotter-glass-bg:    rgba(243, 244, 246, 0.40);
+  --plotter-glass-solid: rgba(255, 255, 255, 0.50);
 
   /* Accents */
   --plotter-orange:      #F4622A;
@@ -43,24 +52,25 @@
   --radius-2xl: 44px;
   --radius-pill: 999px;
 
-  /* Shadows (Light Neumorphism) */
-  --nm-light:  rgba(255,255,255,0.8);
-  --nm-dark:   rgba(163,177,198,0.5);
-  --nm-raised: 
-    6px 6px 14px var(--nm-dark),
-    -6px -6px 14px var(--nm-light),
-    inset 0 1px 0 rgba(255,255,255,0.5);
+  /* Shadows (Light Neumorphism — Very Subtle) */
+  --nm-light:  rgba(255,255,255,0.4);
+  --nm-dark:   rgba(163,177,198,0.35);
+  --nm-raised:
+    5px 5px 14px var(--nm-dark),
+    -4px -4px 12px var(--nm-light);
   --nm-raised-lg:
-    10px 10px 24px var(--nm-dark),
-    -10px -10px 24px var(--nm-light),
-    inset 0 1px 0 rgba(255,255,255,0.5);
+    10px 10px 26px var(--nm-dark),
+    -8px -8px 22px var(--nm-light);
   --nm-inset:
-    inset 4px 4px 10px var(--nm-dark),
-    inset -2px -2px 8px var(--nm-light);
+    inset 4px 4px 12px var(--nm-dark),
+    inset -3px -3px 8px var(--nm-light);
   --nm-glow-orange:
-    8px 8px 24px var(--nm-dark),
-    -5px -5px 16px var(--nm-light),
-    0 16px 32px rgba(244,98,42,0.25);
+    6px 6px 16px var(--nm-dark),
+    -4px -4px 10px var(--nm-light),
+    0 4px 16px rgba(244,98,42,0.15);
+  --nm-pill:
+    3px 3px 8px var(--nm-dark),
+    -3px -3px 7px var(--nm-light);
 
   --shadow-card: var(--nm-raised);
   --shadow-glow: var(--nm-glow-orange);
@@ -84,30 +94,34 @@
   --plotter-border:      rgba(255,255,255,0.055);
   --plotter-border-glow: rgba(244,98,42,0.40);
 
+  --plotter-glass-bg:    rgba(15, 26, 46, 0.40);
+  --plotter-glass-solid: rgba(8, 12, 20, 0.50);
+
   /* Neutrals */
   --plotter-white:       #EDF2FF;
   --plotter-muted:       #6B7E9E;
   --plotter-subtle:      #2E3D55;
 
-  /* Shadows (Dark Neumorphism) */
-  --nm-light:  rgba(255,255,255,0.045);
-  --nm-dark:   rgba(0,0,0,0.55);
-  --nm-raised: 
-    4px 4px 14px var(--nm-dark),
-    -3px -3px 10px var(--nm-light),
-    inset 0 1px 0 rgba(255,255,255,0.04);
+  /* Shadows (Dark Neumorphism — Very Subtle) */
+  --nm-light:  rgba(255,255,255,0.015);
+  --nm-dark:   rgba(0,0,0,0.85);
+  --nm-raised:
+    5px 5px 16px rgba(0,0,0,0.80),
+    -3px -3px 10px rgba(255,255,255,0.015);
   --nm-raised-lg:
-    8px 8px 24px rgba(0,0,0,0.65),
-    -5px -5px 16px rgba(255,255,255,0.04),
-    inset 0 1px 0 rgba(255,255,255,0.05);
+    10px 10px 30px rgba(0,0,0,0.88),
+    -5px -5px 18px rgba(255,255,255,0.015);
   --nm-inset:
-    inset 4px 4px 12px rgba(0,0,0,0.55),
-    inset -2px -2px 8px rgba(255,255,255,0.03);
+    inset 5px 5px 14px rgba(0,0,0,0.80),
+    inset -2px -2px 8px rgba(255,255,255,0.015);
   --nm-glow-orange:
-    8px 8px 24px rgba(0,0,0,0.65),
-    -5px -5px 16px rgba(255,255,255,0.04),
-    0 16px 40px rgba(244,98,42,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.05);
+    6px 6px 20px rgba(0,0,0,0.85),
+    -3px -3px 10px rgba(255,255,255,0.015),
+    0 0 0 1px rgba(244,98,42,0.08),
+    0 4px 24px rgba(244,98,42,0.15);
+  --nm-pill:
+    3px 3px 9px rgba(0,0,0,0.70),
+    -2px -2px 6px rgba(255,255,255,0.015);
 }
 
 /* ── Base ──────────────────────────────────────────────────────── */
@@ -185,77 +199,113 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Glassmorphism ─────────────────────────────────────────────── */
 .glass {
   backdrop-filter: blur(20px) saturate(150%);
-  background: rgba(8,12,20,0.85);
+  background: var(--plotter-glass-solid);
   border: 1px solid var(--plotter-border);
 }
 
 .glass-card {
   backdrop-filter: blur(18px) saturate(140%);
-  background: rgba(15,26,46,0.70);
+  background: var(--plotter-glass-bg);
   border: 1px solid var(--plotter-border);
   box-shadow: var(--shadow-card);
 }
 
-/* ── Neumorphic Utilities ──────────────────────────────────────── */
-/* Raised surface: feels extruded from the bg */
+/* ── Neumorphic Utilities (Global) ─────────────────────────────── */
+
+/* Raised surface — extruded from background */
 .nm-raised {
   background: var(--plotter-card);
   box-shadow: var(--nm-raised);
-  border: 1px solid rgba(255,255,255,0.04);
 }
-
 .nm-raised-lg {
   background: var(--plotter-card);
   box-shadow: var(--nm-raised-lg);
-  border: 1px solid rgba(255,255,255,0.04);
 }
 
-/* Inset: pressed/recessed into the bg */
+/* Inset — recessed into background (form fields, display wells) */
 .nm-inset {
-  background: rgba(0,0,0,0.18);
+  background: var(--plotter-deep, var(--plotter-black));
   box-shadow: var(--nm-inset);
-  border: 1px solid rgba(0,0,0,0.15);
 }
 
-/* Pill with warm glow — like the search bar inspo image */
+/* Pill — raised rounded chip */
 .nm-pill {
   background: var(--plotter-card);
   border-radius: var(--radius-pill);
-  box-shadow: var(--nm-raised);
-  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: var(--nm-pill);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
-
-.nm-pill:focus-within,
 .nm-pill:hover {
   box-shadow: var(--nm-glow-orange);
   transform: translateY(-1px);
 }
 
-/* Active/selected pill — dark extrusion (like 'In Stock' dark toggle) */
+/* Glow — orange accent extrusion */
+.nm-glow {
+  background: var(--plotter-card);
+  box-shadow: var(--nm-glow-orange);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+.nm-glow:hover {
+  transform: translateY(-2px);
+}
+
+/* Active pill — dark pressed with orange rim glow */
 .nm-pill-active {
   background: var(--plotter-orange);
   border-radius: var(--radius-pill);
   box-shadow:
     4px 4px 14px rgba(0,0,0,0.7),
-    -2px -2px 8px rgba(255,255,255,0.03),
-    0 0 20px rgba(244,98,42,0.35);
-  border: 1px solid rgba(244,98,42,0.3);
+    -2px -2px 8px rgba(255,255,255,0.04),
+    0 0 24px rgba(244,98,42,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
-/* Card with warm bottom glow */
+/* Semantic card with nm styling */
 .nm-card {
   background: var(--plotter-card);
   box-shadow: var(--nm-raised-lg);
-  border: 1px solid rgba(255,255,255,0.05);
   border-radius: var(--radius-lg);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
-
 .nm-card:hover {
   box-shadow: var(--nm-glow-orange);
   transform: translateY(-4px);
 }
+
+/* Section header label (inset chip) */
+.nm-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--plotter-deep, var(--plotter-black));
+  box-shadow: var(--nm-inset);
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--plotter-muted);
+}
+
+/* Section divider accent line */
+.nm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.nm-section-title::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--plotter-orange);
+  box-shadow: 0 0 10px rgba(244,98,42,0.5);
+}
+
 
 /* ── Media Card ────────────────────────────────────────────────── */
 .media-card {
@@ -532,6 +582,30 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 8px;
 }
+
+@layer utilities {
+  .nm-raised {
+    box-shadow: var(--nm-raised);
+    background-color: var(--plotter-card);
+  }
+  .nm-raised-lg {
+    box-shadow: var(--nm-raised-lg);
+    background-color: var(--plotter-card);
+  }
+  .nm-inset {
+    box-shadow: var(--nm-inset);
+    background-color: var(--plotter-deep, var(--plotter-black));
+  }
+  .nm-pill {
+    box-shadow: var(--nm-pill);
+    background-color: var(--plotter-card);
+  }
+  .nm-glow {
+    box-shadow: var(--nm-glow-orange);
+    background-color: var(--plotter-card);
+  }
+}
+
 
 .section-title::before {
   content: '';
