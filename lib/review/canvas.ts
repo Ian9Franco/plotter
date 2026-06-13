@@ -111,6 +111,53 @@ function wrapText(
   return y
 }
 
+// ── Measure wrapped text height helper ────────────────────────────
+function measureWrappedTextHeight(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  lineHeight: number,
+): number {
+  const words = text.split(' ')
+  let line = ''
+  let linesCount = 0
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    if (ctx.measureText(word).width > maxWidth) {
+      if (line) {
+        linesCount++
+        line = ''
+      }
+      let subWord = ''
+      for (let j = 0; j < word.length; j++) {
+        const char = word[j]
+        const testSub = subWord + char
+        if (ctx.measureText(testSub).width > maxWidth) {
+          linesCount++
+          subWord = char
+        } else {
+          subWord = testSub
+        }
+      }
+      line = subWord
+    } else {
+      const test = line ? line + ' ' + word : word
+      if (ctx.measureText(test).width > maxWidth && line) {
+        linesCount++
+        line = word
+      } else {
+        line = test
+      }
+    }
+  }
+  
+  if (line) {
+    linesCount++
+  }
+  return linesCount * lineHeight
+}
+
 // ── Rounded rect helper ──────────────────────────────────────────
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -208,11 +255,12 @@ function drawDecimalStar(
   const text = '★'
   const starW = size
   const starH = size
+  const snappedFraction = Math.round(fillFraction * 4) / 4
 
-  if (fillFraction >= 1) {
+  if (snappedFraction >= 1) {
     ctx.fillStyle = '#22c55e'
     ctx.fillText(text, 0, 0)
-  } else if (fillFraction <= 0) {
+  } else if (snappedFraction <= 0) {
     ctx.fillStyle = 'rgba(255,255,255,0.12)'
     ctx.fillText(text, 0, 0)
   } else {
@@ -220,7 +268,7 @@ function drawDecimalStar(
     ctx.fillText(text, 0, 0)
 
     ctx.beginPath()
-    ctx.rect(0, -size * 0.2, starW * fillFraction, starH * 1.4)
+    ctx.rect(0, -size * 0.2, starW * snappedFraction, starH * 1.4)
     ctx.clip()
 
     ctx.fillStyle = '#22c55e'
@@ -261,7 +309,7 @@ export async function generateReviewCanvas(
   // 2. Load poster via proxy
   const posterImg = await loadProxiedImage(data.posterPath)
 
-  // 3. Card geometry
+  // 3. Card geometry & Layout calculation
   const cardMarginX = 90 * s
   const cardW       = w - cardMarginX * 2
   const posterW     = 240 * s
@@ -269,8 +317,55 @@ export async function generateReviewCanvas(
   const posterOverlap = posterH * 0.52
   const cardTopY    = (h * 0.08) + posterOverlap
   const cardBottomY = h - 120 * s
-  const cardH       = cardBottomY - cardTopY
   const cardR       = 40 * s
+
+  const posterX = w / 2 - posterW / 2
+  const posterY = cardTopY - posterOverlap
+  const posterR = 20 * s
+
+  const contentStartY = posterY + posterH + 75 * s
+  const cx = w / 2
+  const textMaxW = cardW - 120 * s
+  let layoutY = contentStartY
+
+  // Calculate dynamic heights before drawing the card
+  ctx.save()
+  const titleFontSize = 48 * s
+  ctx.font = `bold ${titleFontSize}px 'Outfit', Georgia, serif`
+  const titleText = data.title
+  const yearText = `, ${data.year}`
+  const titleW = ctx.measureText(titleText).width
+  ctx.font = `${titleFontSize}px 'Outfit', Georgia, serif`
+  const yearW = ctx.measureText(yearText).width
+
+  if (titleW + yearW < textMaxW) {
+    layoutY += titleFontSize + 12 * s
+  } else {
+    ctx.font = `bold ${titleFontSize}px 'Outfit', Georgia, serif`
+    const titleHeight = measureWrappedTextHeight(ctx, titleText, textMaxW, titleFontSize + 12 * s)
+    layoutY += titleHeight + (38 * s) + 12 * s
+  }
+  layoutY += 12 * s
+  ctx.restore()
+
+  const starSize = 62 * s
+  layoutY += starSize + 32 * s
+
+  if (data.reviewText.trim()) {
+    layoutY += 40 * s
+    ctx.save()
+    ctx.font = `${28 * s}px ${descriptionFont}`
+    const reviewTextHeight = measureWrappedTextHeight(ctx, data.reviewText, textMaxW, 46 * s)
+    layoutY += reviewTextHeight + 20 * s
+    ctx.restore()
+  }
+
+  // Calculate cardH dynamically with a minimum percentage
+  const minHeightPercentage = data.reviewText.trim().length === 0 ? 0.35 : data.reviewText.trim().length < 80 ? 0.40 : 0.45
+  const minCardH = h * minHeightPercentage
+  const maxCardH = h - 120 * s - cardTopY
+  const calculatedCardH = layoutY - cardTopY + 125 * s
+  const cardH = Math.min(maxCardH, Math.max(minCardH, calculatedCardH))
 
   // 4. Card shadow
   ctx.save()
@@ -301,10 +396,6 @@ export async function generateReviewCanvas(
   ctx.stroke()
 
   // 6. Poster
-  const posterX = w / 2 - posterW / 2
-  const posterY = cardTopY - posterOverlap
-  const posterR = 20 * s
-
   ctx.save()
   ctx.shadowColor   = 'rgba(0,0,0,0.95)'
   ctx.shadowBlur    = 50 * s
@@ -335,24 +426,14 @@ export async function generateReviewCanvas(
   ctx.stroke()
 
   // 7. Text contents
-  const contentStartY = posterY + posterH + 75 * s
-  const cx = w / 2
-  const textMaxW = cardW - 120 * s
   let curY = contentStartY
 
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'alphabetic'
 
   // Title + Year
-  const titleFontSize = 48 * s
   ctx.fillStyle = '#ffffff'
   ctx.font = `bold ${titleFontSize}px 'Outfit', Georgia, serif`
-  const titleText   = data.title
-  const yearText    = `, ${data.year}`
-
-  const titleW = ctx.measureText(titleText).width
-  ctx.font = `${titleFontSize}px 'Outfit', Georgia, serif`
-  const yearW  = ctx.measureText(yearText).width
 
   if (titleW + yearW < textMaxW) {
     const totalW = titleW + yearW
@@ -383,12 +464,19 @@ export async function generateReviewCanvas(
 
   curY += 12 * s
 
-  // Draw 5 Decimal Stars
-  const starSize   = 62 * s
-  const starGap    = 10 * s
+  // Draw 5 Decimal Stars & Equivalent Number
+  const starGap = 10 * s
   const totalStarW = 5 * starSize + 4 * starGap
-  let sx = cx - totalStarW / 2
   const ratingVal = data.rating
+  const formattedRating = ratingVal % 0.5 === 0 ? ratingVal.toFixed(1) : ratingVal.toString()
+
+  ctx.save()
+  ctx.font = `bold ${32 * s}px 'Outfit', sans-serif`
+  const textW = ctx.measureText(formattedRating).width
+  const gapBetweenStarsAndText = 20 * s
+  const totalWidth = totalStarW + gapBetweenStarsAndText + textW
+
+  let sx = cx - totalWidth / 2
   const starDrawingY = curY - starSize * 0.1
 
   for (let i = 0; i < 5; i++) {
@@ -397,16 +485,25 @@ export async function generateReviewCanvas(
     sx += starSize + starGap
   }
 
+  // Draw rating number text
+  ctx.fillStyle = '#22c55e'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(formattedRating, sx - starGap + gapBetweenStarsAndText, starDrawingY + starSize / 2 + 2 * s)
+  ctx.restore()
+
   curY += starSize + 32 * s
 
-  // Divider
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)'
-  ctx.lineWidth   = 2 * s
-  ctx.beginPath()
-  ctx.moveTo(cardMarginX + 90 * s, curY)
-  ctx.lineTo(cardMarginX + cardW - 90 * s, curY)
-  ctx.stroke()
-  curY += 40 * s
+  // Divider (only if reviewText is not empty)
+  if (data.reviewText.trim()) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+    ctx.lineWidth   = 2 * s
+    ctx.beginPath()
+    ctx.moveTo(cardMarginX + 90 * s, curY)
+    ctx.lineTo(cardMarginX + cardW - 90 * s, curY)
+    ctx.stroke()
+    curY += 40 * s
+  }
 
   // Centered review text with customizable description font
   if (data.reviewText.trim()) {

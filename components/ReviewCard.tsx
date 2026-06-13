@@ -53,7 +53,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
 
   const getCardHeight = () => {
     if (!shouldShowExpanded) return 280;
-    const baseHeight = 400;
+    const baseHeight = isEditing ? 400 : (currentReview.trim().length < 80 ? 300 : 360);
     const textLength = currentReview.length;
     const additionalHeight = Math.max(0, Math.floor(textLength / 60) * 25);
     return Math.min(baseHeight + additionalHeight, 650);

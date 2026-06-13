@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItem } from '@/lib/tmdb/types'
 import { getPosterUrl } from '@/lib/tmdb/client'
@@ -18,6 +18,7 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
   const [activeIndex, setActiveIndex] = useState(0)
   const router = useRouter()
   const { useOriginal } = useLanguage()
+  const isDraggingRef = useRef(false)
 
   // Interleave movies and TV shows: movie, tv, movie, tv...
   const items = (() => {
@@ -105,11 +106,18 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                   key={`mixed-${itemType}-${item.id}`}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
+                  onDragStart={() => {
+                    isDraggingRef.current = true
+                  }}
                   onDragEnd={(_e, info) => {
                     if (info.offset.x < -30 && activeIndex < items.length - 1) setActiveIndex(prev => prev + 1)
                     else if (info.offset.x > 30 && activeIndex > 0) setActiveIndex(prev => prev - 1)
+                    setTimeout(() => {
+                      isDraggingRef.current = false
+                    }, 100)
                   }}
                   onTap={() => {
+                    if (isDraggingRef.current) return
                     if (isCenter) {
                       handleCardClick(item)
                     } else {

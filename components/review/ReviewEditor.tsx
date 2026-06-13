@@ -7,6 +7,8 @@ import { getTitle, getReleaseYear } from '@/lib/tmdb/types'
 import { generateReviewCanvas, type ReviewFormat } from '@/lib/review/canvas'
 import type { MovieDetails, TVDetails } from '@/lib/tmdb/types'
 import { Download, Check, Loader2, Layers, Palette, Image as ImageIcon, Trash2, Type, Eye, X } from 'lucide-react'
+import { saveReview } from '@/lib/review/storage'
+import { toast } from 'sonner'
 
 interface ReviewEditorProps {
   item: MovieDetails | TVDetails
@@ -100,6 +102,41 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   }
 
   const [errorMsg,     setErrorMsg]     = useState<string | null>(null)
+  const [publishing,   setPublishing]   = useState(false)
+
+  const handlePublishOnly = async () => {
+    if (publishing || rating === 0) return
+    setPublishing(true)
+    setErrorMsg(null)
+    try {
+      // Save review to Supabase or LocalStorage
+      const saveRes = await saveReview({
+        reviewer_name: reviewerName.trim() || 'Anónimo',
+        title,
+        year: year ? year.toString() : '',
+        rating,
+        review_text: reviewText.trim(),
+        description: item.overview || '',
+        poster_path: item.poster_path || null
+      })
+
+      if (saveRes.success) {
+        if (saveRes.storage === 'cloud') {
+          toast.success('Reseña compartida con la comunidad')
+        } else {
+          toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
+        }
+      } else {
+        throw new Error('No se pudo guardar la reseña')
+      }
+    } catch (err) {
+      console.error('Error publishing review:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      setErrorMsg(`Error al publicar: ${msg}`)
+    } finally {
+      setPublishing(false)
+    }
+  }
 
   const handleGenerate = async () => {
     if (downloading || rating === 0) return
@@ -123,6 +160,25 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       const base64 = canvas.toDataURL('image/png', 1.0)
       setGeneratedImg(base64)
       setIsModalOpen(true)
+
+      // Save review to Supabase or LocalStorage
+      const saveRes = await saveReview({
+        reviewer_name: reviewerName.trim() || 'Anónimo',
+        title,
+        year: year ? year.toString() : '',
+        rating,
+        review_text: reviewText.trim(),
+        description: item.overview || '',
+        poster_path: item.poster_path || null
+      })
+
+      if (saveRes.success) {
+        if (saveRes.storage === 'cloud') {
+          toast.success('Reseña compartida con la comunidad')
+        } else {
+          toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
+        }
+      }
     } catch (err) {
       console.error('Error generating image:', err)
       const msg = err instanceof Error ? err.message : String(err)
@@ -189,7 +245,12 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       <div className="absolute inset-0 z-[2] bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_30%,rgba(0,0,0,0.9)_100%)]" />
 
       {/* Central Card container with extreme 3D shadow and glowing borders */}
-      <div className={`w-full h-auto min-h-[45%] rounded-[32px] mt-14 mb-4 p-5 pb-6 flex flex-col items-center justify-center relative z-10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95)] bg-gradient-to-b ${activeColorTheme.bg} border-2 ${activeColorTheme.border}`}>
+      <div 
+        className={`w-full h-auto rounded-[32px] mt-14 mb-4 p-5 pb-6 flex flex-col items-center justify-center relative z-10 shadow-[0_25px_65px_-12px_rgba(0,0,0,0.95)] bg-gradient-to-b ${activeColorTheme.bg} border-2 ${activeColorTheme.border}`}
+        style={{
+          minHeight: !reviewText.trim() ? '35%' : reviewText.trim().length < 80 ? '40%' : '45%'
+        }}
+      >
         
         {/* Central Floating Poster with strong 3D elevation */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-[114px] h-[171px] rounded-2xl overflow-hidden shadow-[0_18px_36px_rgba(0,0,0,0.9)] border-2 border-white/20 bg-gray-900 shrink-0">
@@ -213,36 +274,42 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
             {title} <span className="font-normal text-white/70 text-sm">, {year}</span>
           </h3>
 
-          {/* Decimal-Rendered HTML Stars */}
-          <div className="flex gap-1 mt-3.5 justify-center">
-            {Array.from({ length: 5 }).map((_, i) => {
-              const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100))
-              return (
-                <div key={i} className="relative text-lg text-white/10 select-none">
-                  ★
-                  <div 
-                    className="absolute inset-0 text-[#22c55e] overflow-hidden"
-                    style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
-                  >
+          {/* Decimal-Rendered HTML Stars & Equivalent Number */}
+          <div className="flex gap-2 mt-3.5 justify-center items-center">
+            <div className="flex gap-1">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100))
+                return (
+                  <div key={i} className="relative text-lg text-white/10 select-none">
                     ★
+                    <div 
+                      className="absolute inset-0 text-[#22c55e] overflow-hidden"
+                      style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
+                    >
+                      ★
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+            <span className="font-['Outfit'] font-black text-xs text-[#22c55e] px-1.5 py-0.5 rounded bg-[#22c55e]/10 select-none">
+              {rating % 0.5 === 0 ? rating.toFixed(1) : rating.toString()}
+            </span>
           </div>
 
-          <div className="w-[85%] h-[2px] bg-white/20 my-4 shrink-0 shadow-sm" />
-
-          {/* Review Text — uses currently selected font families */}
           {reviewText.trim() && (
-            <p className={`w-full text-white/90 leading-relaxed px-1 mb-5 italic break-all whitespace-pre-wrap ${activeFontTheme.class} ${
-              reviewText.length > 500 ? 'text-[8px]' : 
-              reviewText.length > 300 ? 'text-[9.5px]' : 
-              reviewText.length > 150 ? 'text-[10.5px]' : 
-              reviewText.length > 80 ? 'text-[11.5px]' : 'text-[13px]'
-            }`}>
-              {reviewText.trim()}
-            </p>
+            <>
+              <div className="w-[85%] h-[2px] bg-white/20 my-4 shrink-0 shadow-sm" />
+              {/* Review Text — uses currently selected font families */}
+              <p className={`w-full text-white/90 leading-relaxed px-1 mb-5 italic break-all whitespace-pre-wrap ${activeFontTheme.class} ${
+                reviewText.length > 500 ? 'text-[8px]' : 
+                reviewText.length > 300 ? 'text-[9.5px]' : 
+                reviewText.length > 150 ? 'text-[10.5px]' : 
+                reviewText.length > 80 ? 'text-[11.5px]' : 'text-[13px]'
+              }`}>
+                {reviewText.trim()}
+              </p>
+            </>
           )}
         </div>
 
@@ -260,10 +327,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   )
 
   return (
-    <div className="px-4 mt-6 pb-20 relative animate-fade-up delay-200">
-      
-
-
+    <>
       {/* MOBILE FULL-SCREEN SIDEBAR DRAWER (SLIDE-DOWN / SWIPE-UP TO SAVE) */}
       <AnimatePresence>
         {isPreviewOpen && (
@@ -326,322 +390,6 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* DESKTOP PERMANENT PREVIEW COLUMN */}
-        <div className="hidden lg:col-span-5 lg:flex flex-col items-center sticky top-24">
-          <p className="text-[var(--plotter-muted)] text-[11px] mb-3 uppercase tracking-widest font-bold self-start pl-1">
-            Previsualización en tiempo real
-          </p>
-          {renderLivePreviewCard()}
-        </div>
-
-        {/* CONTROLS FORM */}
-        <div
-          className="lg:col-span-7 rounded-3xl p-5 lg:p-6 space-y-6"
-          style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
-        >
-          
-          <div className="flex items-center justify-between pb-3 border-b border-[var(--plotter-border)]">
-            <div className="nm-section-title mb-0">
-              <h2 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg">
-                Personaliza tu Review
-              </h2>
-            </div>
-            
-            <div
-              className="text-white font-['Outfit'] font-black px-4 py-1.5 rounded-full text-xs"
-              style={{ backgroundColor: 'var(--plotter-orange)', boxShadow: 'var(--nm-glow-orange)' }}
-            >
-              {rating.toFixed(2)} / 5.00
-            </div>
-          </div>
-
-          {/* Form inputs */}
-          <div className="space-y-4">
-            
-            {/* Rating Stars */}
-            <div>
-              <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-1.5">
-                Calificación (Arrastra o haz tap con precisión decimal 4.5, 4.25...)
-              </label>
-              
-              <div
-                ref={starsContainerRef}
-                className="w-full max-w-[280px] h-12 rounded-2xl flex items-center justify-between px-4 cursor-pointer select-none touch-none transition-all active:scale-[0.99]"
-                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-                onMouseDown={(e) => handleStarGesture(e.clientX)}
-                onMouseMove={(e) => e.buttons === 1 && handleStarGesture(e.clientX)}
-                onTouchMove={handleTouchMove}
-                onTouchStart={(e) => handleStarGesture(e.touches[0].clientX)}
-              >
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100))
-                  return (
-                    <div key={i} className="relative text-2xl text-[var(--plotter-muted)]/20 select-none">
-                      ★
-                      <div 
-                        className="absolute inset-0 text-[#22c55e] overflow-hidden"
-                        style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
-                      >
-                        ★
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Review text */}
-            <div>
-              <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
-                Opinión / Reseña (opcional)
-              </label>
-              <textarea
-                id="review-text-input"
-                value={reviewText}
-                onChange={e => setReviewText(e.target.value.slice(0, 300))}
-                placeholder={`¿Qué te pareció "${title}"?`}
-                rows={3}
-                className="w-full rounded-2xl px-4 py-3 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] resize-none outline-none transition-all"
-                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-              />
-              <div className="flex justify-between text-[10px] text-[var(--plotter-subtle)] mt-1">
-                <span>Ajuste automático en palabras largas</span>
-                <span>{reviewText.length}/300</span>
-              </div>
-            </div>
-
-            {/* Select Font for Description */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Type className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
-                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
-                  Tipografía del texto de tu opinión
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {FONTS.map(f => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setDescFont(f.id)}
-                    className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
-                    style={descFont === f.id ? {
-                      boxShadow: 'var(--nm-glow-orange)',
-                      backgroundColor: 'var(--plotter-orange)',
-                      color: 'white',
-                    } : {
-                      boxShadow: 'var(--nm-pill)',
-                      backgroundColor: 'var(--plotter-card)',
-                      color: 'var(--plotter-muted)',
-                    }}
-                  >
-                    <span className={`inline-block mr-1.5 ${f.class}`}>Aa</span>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Name */}
-            <div>
-              <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
-                Tu nombre
-              </label>
-              <input
-                id="reviewer-name-input"
-                value={reviewerName}
-                onChange={e => setReviewerName(e.target.value)}
-                placeholder="Ej: Martín"
-                maxLength={20}
-                className="w-full rounded-2xl px-4 py-2.5 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] outline-none transition-all"
-                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-              />
-            </div>
-          </div>
-
-          <div className="w-full h-[1px] bg-[var(--plotter-border)]" />
-
-          {/* Style Controls */}
-          <div className="space-y-4">
-            
-            {/* Custom Background Upload */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <ImageIcon className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
-                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
-                  Fondo de la Imagen (Usa tu propia Galería)
-                </label>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 px-4 py-2.5 bg-[var(--plotter-card)] hover:bg-[var(--plotter-card-hover)] text-[var(--plotter-white)] rounded-xl text-xs font-bold border border-[var(--plotter-border)] cursor-pointer transition-all">
-                  <ImageIcon className="w-4 h-4" />
-                  Elegir foto de galería
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCustomBgUpload}
-                    className="hidden"
-                  />
-                </label>
-                
-                {customBg && (
-                  <button
-                    type="button"
-                    onClick={removeCustomBg}
-                    className="flex items-center gap-1 px-3 py-2.5 bg-red-950/40 border border-red-500/20 text-red-400 hover:bg-red-900/60 rounded-xl text-xs font-bold transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Quitar fondo
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Card Colors */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Palette className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
-                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
-                  Fondo de la tarjeta central
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {CARD_COLORS.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCardColor(c.id)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-                    style={cardColor === c.id ? {
-                      boxShadow: 'var(--nm-glow-orange)',
-                      backgroundColor: 'var(--plotter-orange)',
-                      color: 'white',
-                    } : {
-                      boxShadow: 'var(--nm-pill)',
-                      backgroundColor: 'var(--plotter-card)',
-                      color: 'var(--plotter-muted)',
-                    }}
-                  >
-                    <span className={`w-3 h-3 rounded-full ${c.dot} ring-1 ring-white/10`} />
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Textures */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Layers className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
-                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
-                  Texturas Alternativas
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {TEXTURES.map(t => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTexture(t.id)}
-                    disabled={texture === 'custom'}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${texture === 'custom' ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    style={texture === t.id ? {
-                      boxShadow: 'var(--nm-inset)',
-                      backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
-                      color: 'var(--plotter-orange)',
-                    } : {
-                      boxShadow: 'var(--nm-pill)',
-                      backgroundColor: 'var(--plotter-card)',
-                      color: 'var(--plotter-muted)',
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Resolution Formats */}
-            <div>
-              <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
-                Formato / Resolución de la imagen (Instagram / Redes)
-              </label>
-              <div className="flex gap-2">
-                {FORMATS.map(f => (
-                  <button
-                    key={f.id}
-                    id={`format-${f.id.replace(':','x')}`}
-                    type="button"
-                    onClick={() => setFormat(f.id)}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
-                    style={format === f.id ? {
-                      boxShadow: 'var(--nm-glow-orange)',
-                      backgroundColor: 'var(--plotter-orange)',
-                      color: 'white',
-                    } : {
-                      boxShadow: 'var(--nm-pill)',
-                      backgroundColor: 'var(--plotter-card)',
-                      color: 'var(--plotter-muted)',
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[var(--plotter-subtle)] text-[10px] mt-1.5 text-center">
-                {FORMATS.find(f => f.id === format)?.hint}
-              </p>
-            </div>
-          </div>
-
-          {/* Mobile Preview Button above Download on mobile */}
-          <button
-            type="button"
-            onClick={() => setIsPreviewOpen(true)}
-            className="lg:hidden w-full py-3.5 mb-3 text-[var(--plotter-white)] font-bold rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
-            style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
-          >
-            <Eye className="w-4 h-4 text-[var(--plotter-orange)]" />
-            ver vista previa
-          </button>
-
-          {/* Action Trigger Button */}
-          <button
-            id="download-review-btn"
-            type="button"
-            onClick={handleGenerate}
-            disabled={downloading || rating === 0}
-            className={`w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 text-white ${
-              rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
-            }`}
-            style={rating === 0 ? {
-              boxShadow: 'var(--nm-inset)',
-              backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
-              color: 'var(--plotter-muted)',
-            } : {
-              boxShadow: 'var(--nm-glow-orange)',
-              backgroundColor: 'var(--plotter-orange)',
-            }}
-          >
-            {downloading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />Generando...</>
-            ) : (
-              <><Download className="w-4 h-4" />descargar review</>
-            )}
-          </button>
-
-           {errorMsg && (
-            <p className="text-center text-red-400 font-bold text-xs bg-red-950/20 border border-red-500/20 py-2.5 px-4 rounded-xl animate-shake mt-2">
-              {errorMsg}
-            </p>
-          )}
-        </div>
-
-      </div>
-
       {/* GUARANTEED DOWNLOAD & SAVE DIALOG (MODAL OVERLAY) */}
       {isModalOpen && generatedImg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -658,7 +406,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               className="absolute top-4 right-4 p-1.5 rounded-full text-[var(--plotter-muted)] hover:text-white transition-all active:scale-90"
               style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4.5 h-4.5" />
             </button>
 
             <h3 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg mb-2">¡Imagen lista!</h3>
@@ -715,6 +463,344 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         </div>
       )}
 
-    </div>
+      <div className="px-4 mt-6 pb-20 relative animate-fade-up delay-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* DESKTOP PERMANENT PREVIEW COLUMN */}
+          <div className="hidden lg:col-span-5 lg:flex flex-col items-center sticky top-24">
+            <p className="text-[var(--plotter-muted)] text-[11px] mb-3 uppercase tracking-widest font-bold self-start pl-1">
+              Previsualización en tiempo real
+            </p>
+            {renderLivePreviewCard()}
+          </div>
+
+          {/* CONTROLS FORM */}
+          <div
+            className="lg:col-span-7 rounded-3xl p-5 lg:p-6 space-y-6"
+            style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
+          >
+            
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--plotter-border)]">
+              <div className="nm-section-title mb-0">
+                <h2 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg">
+                  Personaliza tu Review
+                </h2>
+              </div>
+              
+              <div
+                className="text-white font-['Outfit'] font-black px-4 py-1.5 rounded-full text-xs"
+                style={{ backgroundColor: 'var(--plotter-orange)', boxShadow: 'var(--nm-glow-orange)' }}
+              >
+                {rating.toFixed(2)} / 5.00
+              </div>
+            </div>
+
+            {/* Form inputs */}
+            <div className="space-y-4">
+              
+              {/* Rating Stars */}
+              <div>
+                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-1.5">
+                  Calificación (Arrastra o haz tap con precisión decimal 4.5, 4.25...)
+                </label>
+                
+                <div
+                  ref={starsContainerRef}
+                  className="w-full max-w-[280px] h-12 rounded-2xl flex items-center justify-between px-4 cursor-pointer select-none touch-none transition-all active:scale-[0.99]"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+                  onMouseDown={(e) => handleStarGesture(e.clientX)}
+                  onMouseMove={(e) => e.buttons === 1 && handleStarGesture(e.clientX)}
+                  onTouchMove={handleTouchMove}
+                  onTouchStart={(e) => handleStarGesture(e.touches[0].clientX)}
+                >
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100))
+                    return (
+                      <div key={i} className="relative text-2xl text-[var(--plotter-muted)]/20 select-none">
+                        ★
+                        <div 
+                          className="absolute inset-0 text-[#22c55e] overflow-hidden"
+                          style={{ clipPath: `inset(0 ${100 - fillPercentage}% 0 0)` }}
+                        >
+                          ★
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Review text */}
+              <div>
+                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
+                  Opinión / Reseña (opcional)
+                </label>
+                <textarea
+                  id="review-text-input"
+                  value={reviewText}
+                  onChange={e => setReviewText(e.target.value.slice(0, 300))}
+                  placeholder={`¿Qué te pareció "${title}"?`}
+                  rows={3}
+                  className="w-full rounded-2xl px-4 py-3 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] resize-none outline-none transition-all"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+                />
+                <div className="flex justify-between text-[10px] text-[var(--plotter-subtle)] mt-1">
+                  <span>Ajuste automático en palabras largas</span>
+                  <span>{reviewText.length}/300</span>
+                </div>
+              </div>
+
+              {/* Select Font for Description */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Type className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                  <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
+                    Tipografía del texto de tu opinión
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {FONTS.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setDescFont(f.id)}
+                      className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      style={descFont === f.id ? {
+                        boxShadow: 'var(--nm-glow-orange)',
+                        backgroundColor: 'var(--plotter-orange)',
+                        color: 'white',
+                      } : {
+                        boxShadow: 'var(--nm-pill)',
+                        backgroundColor: 'var(--plotter-card)',
+                        color: 'var(--plotter-muted)',
+                      }}
+                    >
+                      <span className={`inline-block mr-1.5 ${f.class}`}>Aa</span>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
+                  Tu nombre
+                </label>
+                <input
+                  id="reviewer-name-input"
+                  value={reviewerName}
+                  onChange={e => setReviewerName(e.target.value)}
+                  placeholder="Ej: Martín"
+                  maxLength={20}
+                  className="w-full rounded-2xl px-4 py-2.5 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] outline-none transition-all"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+                />
+              </div>
+            </div>
+
+            <div className="w-full h-[1px] bg-[var(--plotter-border)]" />
+
+            {/* Style Controls */}
+            <div className="space-y-4">
+              
+              {/* Custom Background Upload */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ImageIcon className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                  <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
+                    Fondo de la Imagen (Usa tu propia Galería)
+                  </label>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2.5 bg-[var(--plotter-card)] hover:bg-[var(--plotter-card-hover)] text-[var(--plotter-white)] rounded-xl text-xs font-bold border border-[var(--plotter-border)] cursor-pointer transition-all">
+                    <ImageIcon className="w-4 h-4" />
+                    Elegir foto de galería
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCustomBgUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  
+                  {customBg && (
+                    <button
+                      type="button"
+                      onClick={removeCustomBg}
+                      className="flex items-center gap-1 px-3 py-2.5 bg-red-950/40 border border-red-500/20 text-red-400 hover:bg-red-900/60 rounded-xl text-xs font-bold transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Quitar fondo
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Card Colors */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Palette className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                  <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
+                    Fondo de la tarjeta central
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CARD_COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCardColor(c.id)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      style={cardColor === c.id ? {
+                        boxShadow: 'var(--nm-glow-orange)',
+                        backgroundColor: 'var(--plotter-orange)',
+                        color: 'white',
+                      } : {
+                        boxShadow: 'var(--nm-pill)',
+                        backgroundColor: 'var(--plotter-card)',
+                        color: 'var(--plotter-muted)',
+                      }}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${c.dot} ring-1 ring-white/10`} />
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Textures */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Layers className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                  <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
+                    Texturas Alternativas
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {TEXTURES.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTexture(t.id)}
+                      disabled={texture === 'custom'}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${texture === 'custom' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      style={texture === t.id ? {
+                        boxShadow: 'var(--nm-inset)',
+                        backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+                        color: 'var(--plotter-orange)',
+                      } : {
+                        boxShadow: 'var(--nm-pill)',
+                        backgroundColor: 'var(--plotter-card)',
+                        color: 'var(--plotter-muted)',
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resolution Formats */}
+              <div>
+                <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block mb-2">
+                  Formato / Resolución de la imagen (Instagram / Redes)
+                </label>
+                <div className="flex gap-2">
+                  {FORMATS.map(f => (
+                    <button
+                      key={f.id}
+                      id={`format-${f.id.replace(':','x')}`}
+                      type="button"
+                      onClick={() => setFormat(f.id)}
+                      className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      style={format === f.id ? {
+                        boxShadow: 'var(--nm-glow-orange)',
+                        backgroundColor: 'var(--plotter-orange)',
+                        color: 'white',
+                      } : {
+                        boxShadow: 'var(--nm-pill)',
+                        backgroundColor: 'var(--plotter-card)',
+                        color: 'var(--plotter-muted)',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[var(--plotter-subtle)] text-[10px] mt-1.5 text-center">
+                  {FORMATS.find(f => f.id === format)?.hint}
+                </p>
+              </div>
+            </div>
+
+            {/* Mobile Preview Button above Download on mobile */}
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="lg:hidden w-full py-3.5 mb-3 text-[var(--plotter-white)] font-bold rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+              style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+            >
+              <Eye className="w-4 h-4 text-[var(--plotter-orange)]" />
+              ver vista previa
+            </button>
+
+            {/* Action Trigger Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                id="download-review-btn"
+                type="button"
+                onClick={handleGenerate}
+                disabled={downloading || rating === 0}
+                className={`w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 text-white ${
+                  rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
+                }`}
+                style={rating === 0 ? {
+                  boxShadow: 'var(--nm-inset)',
+                  backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+                  color: 'var(--plotter-muted)',
+                } : {
+                  boxShadow: 'var(--nm-glow-orange)',
+                  backgroundColor: 'var(--plotter-orange)',
+                }}
+              >
+                {downloading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Generando...</>
+                ) : (
+                  <><Download className="w-4 h-4" />descargar review</>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePublishOnly}
+                disabled={publishing || rating === 0}
+                className={`w-full py-3.5 rounded-2xl font-['Outfit'] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 border border-white/5 text-[var(--plotter-white)] hover:text-[var(--plotter-orange)] ${
+                  rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
+                }`}
+                style={{
+                  boxShadow: 'var(--nm-pill)',
+                  backgroundColor: 'var(--plotter-card)',
+                }}
+              >
+                {publishing ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Publicando...</>
+                ) : (
+                  <>publicar reseña</>
+                )}
+              </button>
+            </div>
+
+            {errorMsg && (
+              <p className="text-center text-red-400 font-bold text-xs bg-red-950/20 border border-red-500/20 py-2.5 px-4 rounded-xl animate-shake mt-2">
+                {errorMsg}
+              </p>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </>
   )
 }

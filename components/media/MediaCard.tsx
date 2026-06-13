@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getPosterUrl, getBackdropUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import type { MediaItem } from '@/lib/tmdb/types'
-import { Ticket, Calendar } from 'lucide-react'
+import { Ticket, Calendar, Tv } from 'lucide-react'
 
 import { useLanguage } from '@/hooks/useLanguage'
 
@@ -26,11 +26,11 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
   const year      = getReleaseYear(item)
   const posterUrl = getPosterUrl(item.poster_path, 'w342')
   const backdropUrl = getBackdropUrl(item.backdrop_path, 'w780')
-  const type      = isMovie(item) ? 'movie' : 'tv'
+  const type      = isMovie(item) && !('first_air_date' in item) ? 'movie' : 'tv'
   const rating    = item.vote_average.toFixed(1)
 
-  const isMovieItem = isMovie(item)
-  const releaseDateStr = isMovieItem ? (item as any).release_date : null
+  const isMovieItem = isMovie(item) && !('first_air_date' in item)
+  const releaseDateStr = isMovieItem ? (item as any).release_date : (item as any).first_air_date
   
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
@@ -43,8 +43,14 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
     return releaseDate <= today && releaseDate >= fortyFiveDaysAgo
   })()
 
+  const isOnAir = (() => {
+    if (isMovieItem || !releaseDateStr) return false
+    const releaseDate = new Date(releaseDateStr)
+    return releaseDate <= today
+  })()
+
   const isUpcoming = (() => {
-    if (!isMovieItem || !releaseDateStr) return false
+    if (!releaseDateStr) return false
     return releaseDateStr > todayStr
   })()
 
@@ -121,11 +127,13 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
         className={`${variant === 'wide' ? 'aspect-[16/9]' : 'aspect-[2/3]'} relative overflow-hidden bg-[#0A0F1A] rounded-[20px] transition-all duration-500`}
         style={{
           boxShadow: isActive
-            ? isInTheaters
+            ? (isMovieItem && isInTheaters)
               ? '0 20px 40px rgba(239,68,68,0.3), 0 0 30px rgba(239,68,68,0.15), var(--nm-raised)'
-              : isUpcoming
-                ? '0 20px 40px rgba(245,158,11,0.3), 0 0 30px rgba(245,158,11,0.15), var(--nm-raised)'
-                : 'var(--nm-glow-orange)'
+              : (!isMovieItem && isOnAir)
+                ? '0 20px 40px rgba(16,185,129,0.3), 0 0 30px rgba(16,185,129,0.15), var(--nm-raised)'
+                : isUpcoming
+                  ? '0 20px 40px rgba(245,158,11,0.3), 0 0 30px rgba(245,158,11,0.15), var(--nm-raised)'
+                  : 'var(--nm-glow-orange)'
             : isHovered
               ? 'var(--nm-glow-orange)'
               : 'var(--nm-raised)',
@@ -133,12 +141,22 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
         }}
       >
         {/* Floating status badges */}
-        {isInTheaters && (
+        {isMovieItem && isInTheaters && (
           <div className="absolute top-3 left-3 z-30 pointer-events-none">
             <div className="flex items-center gap-1 bg-gradient-to-r from-red-600 to-orange-600 text-white font-['Outfit'] font-black text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full shadow-[0_4px_12px_rgba(220,38,38,0.4)] border border-white/10 backdrop-blur-md">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <Ticket className="w-2.5 h-2.5 animate-bounce" />
               <span>En Cines</span>
+            </div>
+          </div>
+        )}
+
+        {!isMovieItem && isOnAir && (
+          <div className="absolute top-3 left-3 z-30 pointer-events-none">
+            <div className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-emerald-500 text-white font-['Outfit'] font-black text-[9px] tracking-wider uppercase px-2.5 py-1 rounded-full shadow-[0_4px_12px_rgba(16,185,129,0.4)] border border-white/10 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <Tv className="w-2.5 h-2.5 animate-bounce" />
+              <span>En Emisión</span>
             </div>
           </div>
         )}
