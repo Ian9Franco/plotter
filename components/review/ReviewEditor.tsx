@@ -64,6 +64,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   const [generatedImg, setGeneratedImg] = useState<string | null>(null) // holds result base64 to show in modal
   const [isModalOpen,  setIsModalOpen]  = useState(false)
   const [isMounted,    setIsMounted]    = useState(false)
+  const [isSaved,      setIsSaved]      = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
@@ -80,6 +81,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
     const rawRating = percentage * 5
     const snapped = Math.round(rawRating * 4) / 4
     setRating(snapped)
+    setIsSaved(false)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -112,6 +114,10 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
 
   const handlePublishOnly = async () => {
     if (publishing || rating === 0) return
+    if (isSaved) {
+      toast.success('Esta reseña ya fue guardada/publicada.')
+      return
+    }
     setPublishing(true)
     setErrorMsg(null)
     try {
@@ -127,6 +133,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       })
 
       if (saveRes.success) {
+        setIsSaved(true)
         if (saveRes.storage === 'cloud') {
           toast.success('Reseña compartida con la comunidad')
         } else {
@@ -167,22 +174,25 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       setGeneratedImg(base64)
       setIsModalOpen(true)
 
-      // Save review to Supabase or LocalStorage
-      const saveRes = await saveReview({
-        reviewer_name: reviewerName.trim() || 'Anónimo',
-        title,
-        year: year ? year.toString() : '',
-        rating,
-        review_text: reviewText.trim(),
-        description: item.overview || '',
-        poster_path: item.poster_path || null
-      })
+      // Skip save review if already saved
+      if (!isSaved) {
+        const saveRes = await saveReview({
+          reviewer_name: reviewerName.trim() || 'Anónimo',
+          title,
+          year: year ? year.toString() : '',
+          rating,
+          review_text: reviewText.trim(),
+          description: item.overview || '',
+          poster_path: item.poster_path || null
+        })
 
-      if (saveRes.success) {
-        if (saveRes.storage === 'cloud') {
-          toast.success('Reseña compartida con la comunidad')
-        } else {
-          toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
+        if (saveRes.success) {
+          setIsSaved(true)
+          if (saveRes.storage === 'cloud') {
+            toast.success('Reseña compartida con la comunidad')
+          } else {
+            toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
+          }
         }
       }
     } catch (err) {
@@ -549,7 +559,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 <textarea
                   id="review-text-input"
                   value={reviewText}
-                  onChange={e => setReviewText(e.target.value.slice(0, 300))}
+                  onChange={e => { setReviewText(e.target.value.slice(0, 300)); setIsSaved(false); }}
                   placeholder={`¿Qué te pareció "${title}"?`}
                   rows={3}
                   className="w-full rounded-2xl px-4 py-3 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] resize-none outline-none transition-all"
@@ -601,7 +611,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 <input
                   id="reviewer-name-input"
                   value={reviewerName}
-                  onChange={e => setReviewerName(e.target.value)}
+                  onChange={e => { setReviewerName(e.target.value); setIsSaved(false); }}
                   placeholder="Ej: Martín"
                   maxLength={20}
                   className="w-full rounded-2xl px-4 py-2.5 text-[var(--plotter-white)] text-sm placeholder:text-[var(--plotter-subtle)] outline-none transition-all"

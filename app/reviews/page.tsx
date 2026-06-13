@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare } from 'lucide-react'
+import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchCommunityReviews, syncLocalReviews, deleteReview, type Review } from '@/lib/review/storage'
 import { toast } from 'sonner'
@@ -20,6 +20,7 @@ export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [selectedReviewerName, setSelectedReviewerName] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   
   // Auth Form State
   const [isSignUp, setIsSignUp] = useState(false)
@@ -122,9 +123,6 @@ export default function ReviewsPage() {
 
   const handleDeleteReview = async (reviewId: string) => {
     if (!reviewId) return
-    if (!window.confirm('¿Estás seguro de que querés eliminar esta reseña? Esta acción no se puede deshacer.')) {
-      return
-    }
 
     try {
       const res = await deleteReview(reviewId)
@@ -498,12 +496,34 @@ export default function ReviewsPage() {
                         {isOwner && review.id && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteReview(review.id!)}
-                            className="p-2 rounded-xl text-[var(--plotter-muted)] hover:text-red-400 hover:bg-red-500/5 transition-all active:scale-90"
-                            style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep)' }}
-                            title="Eliminar Reseña"
+                            onClick={() => {
+                              if (deletingId === review.id) {
+                                handleDeleteReview(review.id!)
+                                setDeletingId(null)
+                              } else {
+                                setDeletingId(review.id!)
+                                // Reset after 4 seconds if they don't confirm
+                                setTimeout(() => {
+                                  setDeletingId(current => current === review.id ? null : current)
+                                }, 4000)
+                              }
+                            }}
+                            className={`p-2 rounded-xl transition-all active:scale-90 ${
+                              deletingId === review.id 
+                                ? 'text-green-400 hover:text-green-300 bg-green-500/10' 
+                                : 'text-[var(--plotter-muted)] hover:text-red-400 hover:bg-red-500/5'
+                            }`}
+                            style={{ 
+                              boxShadow: 'var(--nm-inset)', 
+                              backgroundColor: deletingId === review.id ? 'transparent' : 'var(--plotter-deep)' 
+                            }}
+                            title={deletingId === review.id ? "Confirmar eliminación" : "Eliminar Reseña"}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {deletingId === review.id ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         )}
                       </div>

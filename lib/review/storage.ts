@@ -64,12 +64,23 @@ export async function saveReview(review: Omit<Review, 'id' | 'created_at'>): Pro
   }
 }
 
+let isSyncing = false
+
 // Sync local reviews to Supabase
 export async function syncLocalReviews(userId: string): Promise<{ success: boolean; count: number; error?: any }> {
   if (typeof window === 'undefined') return { success: true, count: 0 }
+  if (isSyncing) return { success: true, count: 0 }
+  
+  isSyncing = true
   try {
     const localReviews = getLocalReviews()
-    if (localReviews.length === 0) return { success: true, count: 0 }
+    if (localReviews.length === 0) {
+      isSyncing = false
+      return { success: true, count: 0 }
+    }
+    
+    // Clear queue BEFORE inserting to prevent duplicate calls from racing
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
     
     // Map to include user_id and clean metadata
     const reviewsToInsert = localReviews.map(review => ({
@@ -88,14 +99,18 @@ export async function syncLocalReviews(userId: string): Promise<{ success: boole
       .from('reviews')
       .insert(reviewsToInsert)
       
-    if (error) throw error
+    if (error) {
+      // Restore queue if insertion fails
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localReviews))
+      throw error
+    }
     
-    // Clear queue upon success
-    localStorage.removeItem(LOCAL_STORAGE_KEY)
     return { success: true, count: reviewsToInsert.length }
   } catch (err) {
     console.error('Error syncing local reviews:', err)
     return { success: false, count: 0, error: err }
+  } finally {
+    isSyncing = false
   }
 }
 
