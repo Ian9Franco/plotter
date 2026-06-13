@@ -31,3 +31,6 @@ create policy "Allow users to update their own reviews"
 create policy "Allow users to delete their own reviews"
   on public.reviews for delete
   using (auth.uid() = user_id);
+
+
+

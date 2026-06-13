@@ -8,7 +8,8 @@ import { getTitle, getReleaseYear } from '@/lib/tmdb/types'
 import { generateReviewCanvas, type ReviewFormat } from '@/lib/review/canvas'
 import type { MovieDetails, TVDetails } from '@/lib/tmdb/types'
 import { Download, Check, Loader2, Layers, Palette, Image as ImageIcon, Trash2, Type, Eye, X } from 'lucide-react'
-import { saveReview } from '@/lib/review/storage'
+import { supabase } from '@/lib/supabase'
+import { saveReview, fetchUserProfile } from '@/lib/review/storage'
 import { toast } from 'sonner'
 
 interface ReviewEditorProps {
@@ -64,6 +65,24 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   const [reviewText,   setReviewText]   = useState('')
   const [reviewerName, setReviewerName] = useState('')
   const [format,       setFormat]       = useState<ReviewFormat>('9:16')
+
+  // Auto-populate reviewerName from Supabase profile if logged in
+  useEffect(() => {
+    async function loadDefaultReviewerName() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id)
+          if (profile?.display_name) {
+            setReviewerName(profile.display_name)
+          }
+        }
+      } catch (err) {
+        console.error('Error loading reviewer profile:', err)
+      }
+    }
+    loadDefaultReviewerName()
+  }, [])
   const [texture,      setTexture]      = useState<'cruces' | 'grano' | 'lineas' | 'solido' | 'custom'>('cruces')
   const [customBg,     setCustomBg]     = useState<string | null>(null)
   const [cardColor,    setCardColor]    = useState<'slate' | 'carbon' | 'sunset' | 'forest' | 'wine'>('slate')

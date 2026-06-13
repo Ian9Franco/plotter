@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react'
 import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { fetchCommunityReviews, syncLocalReviews, deleteReview, type Review } from '@/lib/review/storage'
+import { fetchCommunityReviews, syncLocalReviews, deleteReview, fetchUserProfile, type Review, type Profile } from '@/lib/review/storage'
 import { toast } from 'sonner'
+import ProfileSettings from '@/components/profile/ProfileSettings'
+import { AnimatePresence } from 'framer-motion'
 import { getPosterUrl } from '@/lib/tmdb/client'
 
 interface ReviewerGroup {
   name: string
+  avatarUrl?: string | null
   reviews: Review[]
   avgRating: number
   isCurrentUser: boolean
@@ -17,6 +20,8 @@ interface ReviewerGroup {
 export default function ReviewsPage() {
   const [user, setUser] = useState<any>(null)
   const [loadingUser, setLoadingUser] = useState(true)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [reviews, setReviews] = useState<Review[]>([])
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [selectedReviewerName, setSelectedReviewerName] = useState<string | null>(null)
@@ -40,6 +45,14 @@ export default function ReviewsPage() {
     }
   }, [])
 
+  // Load user profile details
+  const loadUserProfile = async (userId: string) => {
+    const data = await fetchUserProfile(userId)
+    if (data) {
+      setProfile(data)
+    }
+  }
+
   // Listen to Auth State changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,6 +60,7 @@ export default function ReviewsPage() {
       setLoadingUser(false)
       if (session?.user) {
         handlePostAuthSync(session.user.id)
+        loadUserProfile(session.user.id)
       }
     })
 
@@ -55,6 +69,9 @@ export default function ReviewsPage() {
       setLoadingUser(false)
       if (session?.user) {
         handlePostAuthSync(session.user.id)
+        loadUserProfile(session.user.id)
+      } else {
+        setProfile(null)
       }
     })
 
@@ -131,6 +148,8 @@ export default function ReviewsPage() {
       await supabase.auth.signOut()
       toast.success('Sesión cerrada')
       setUser(null)
+      setProfile(null)
+      setShowProfileEdit(false)
       setReviews([])
       setSelectedReviewerName(null)
       // Only clear remembered email if user explicitly unchecked "remember me"
@@ -170,15 +189,22 @@ export default function ReviewsPage() {
   // Group reviews
   const groupedReviewers: ReviewerGroup[] = []
   reviews.forEach(review => {
-    let group = groupedReviewers.find(g => g.name.toLowerCase() === review.reviewer_name.toLowerCase())
+    const displayName = review.profiles?.display_name || review.reviewer_name || 'Anónimo'
+    const avatarUrl = review.profiles?.avatar_url || null
+
+    let group = groupedReviewers.find(g => g.name.toLowerCase() === displayName.toLowerCase())
     if (!group) {
       group = {
-        name: review.reviewer_name,
+        name: displayName,
+        avatarUrl: avatarUrl,
         reviews: [],
         avgRating: 0,
         isCurrentUser: false
       }
       groupedReviewers.push(group)
+    }
+    if (avatarUrl && !group.avatarUrl) {
+      group.avatarUrl = avatarUrl
     }
     group.reviews.push(review)
     if (user && review.user_id === user.id) {
@@ -335,31 +361,71 @@ export default function ReviewsPage() {
           
           {/* Header Portal Profile Info */}
           <div 
-            className="w-full p-6 rounded-[32px] flex flex-col sm:flex-row items-center justify-between gap-4"
+            className="w-full p-6 rounded-[32px] flex flex-col gap-6"
             style={{ boxShadow: 'var(--nm-raised)', backgroundColor: 'var(--plotter-card)' }}
           >
-            <div className="flex items-center gap-4">
-              <div 
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep)' }}
-              >
-                <User className="w-5 h-5 text-[var(--plotter-orange)]" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div 
+                  className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center border border-white/10"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep)' }}
+                >
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-5 h-5 text-[var(--plotter-orange)]" />
+                  )}
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs text-[var(--plotter-muted)] font-semibold">Sesión activa</p>
+                  <p className="text-sm font-black text-white font-['Outfit'] truncate max-w-[200px] sm:max-w-xs">
+                    {profile?.display_name || user.email.split('@')[0]}
+                  </p>
+                  <p className="text-[10px] text-[var(--plotter-muted)] font-semibold">{user.email}</p>
+                </div>
               </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs text-[var(--plotter-muted)] font-semibold">Sesión activa como</p>
-                <p className="text-sm font-black text-white font-['Outfit'] truncate max-w-[200px] sm:max-w-xs">{user.email}</p>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileEdit(!showProfileEdit)}
+                  className={`px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5 ${
+                    showProfileEdit 
+                      ? 'text-[var(--plotter-orange)] border-[var(--plotter-orange)]/35' 
+                      : 'text-[var(--plotter-muted)] hover:text-white'
+                  }`}
+                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                >
+                  <User className="w-4 h-4" />
+                  {showProfileEdit ? 'Ver Autores' : 'Editar Perfil'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="px-5 py-3 rounded-2xl text-[var(--plotter-muted)] hover:text-red-400 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5"
+                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Cerrar Sesión
+                </button>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="px-5 py-3 rounded-2xl text-[var(--plotter-muted)] hover:text-red-400 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5"
-              style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
-            >
-              <LogOut className="w-4 h-4" />
-              Cerrar Sesión
-            </button>
+            {/* Profile settings component shown inline if toggled */}
+            <AnimatePresence>
+              {showProfileEdit && (
+                <ProfileSettings
+                  userId={user.id}
+                  email={user.email}
+                  onClose={() => setShowProfileEdit(false)}
+                  onProfileUpdated={(updatedProfile) => {
+                    setProfile(updatedProfile)
+                    loadReviews()
+                  }}
+                />
+              )}
+            </AnimatePresence>
           </div>
 
           {/* VIEW: MAIN GROUPED FEED */}
@@ -400,10 +466,14 @@ export default function ReviewsPage() {
                     >
                       <div className="flex gap-4 items-center min-w-0">
                         <div 
-                          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                          className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 border border-white/10"
                           style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep)' }}
                         >
-                          <User className={`w-4 h-4 ${group.isCurrentUser ? 'text-[var(--plotter-orange)]' : 'text-[var(--plotter-muted)]'}`} />
+                          {group.avatarUrl ? (
+                            <img src={group.avatarUrl} alt={group.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className={`w-4 h-4 ${group.isCurrentUser ? 'text-[var(--plotter-orange)]' : 'text-[var(--plotter-muted)]'}`} />
+                          )}
                         </div>
                         
                         <div className="min-w-0">
@@ -592,8 +662,11 @@ export default function ReviewsPage() {
 
                       {/* Footer */}
                       <div className="flex justify-between items-center mt-2">
-                        <span className="text-[10px] text-[var(--plotter-muted)] font-bold">
-                          Por: {review.reviewer_name}
+                        <span className="text-[10px] text-[var(--plotter-muted)] font-bold flex items-center gap-1.5">
+                          {review.profiles?.avatar_url && (
+                            <img src={review.profiles.avatar_url} alt={review.profiles.display_name || review.reviewer_name} className="w-4.5 h-4.5 rounded-full object-cover border border-white/10" />
+                          )}
+                          Por: {review.profiles?.display_name || review.reviewer_name}
                         </span>
                         <span className="text-[9px] text-[var(--plotter-muted)]/75">
                           {review.created_at ? new Date(review.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}
