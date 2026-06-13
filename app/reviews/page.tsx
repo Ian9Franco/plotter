@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check } from 'lucide-react'
+import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchCommunityReviews, syncLocalReviews, deleteReview, type Review } from '@/lib/review/storage'
 import { toast } from 'sonner'
@@ -26,8 +26,19 @@ export default function ReviewsPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+
+  // Restore remembered email from localStorage on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('plotter_remembered_email')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
+    }
+  }, [])
 
   // Listen to Auth State changes
   useEffect(() => {
@@ -99,6 +110,12 @@ export default function ReviewsPage() {
           password,
         })
         if (error) throw error
+        // Persist email to localStorage if "remember me" is checked
+        if (rememberMe) {
+          localStorage.setItem('plotter_remembered_email', email)
+        } else {
+          localStorage.removeItem('plotter_remembered_email')
+        }
         toast.success('Sesión iniciada correctamente')
       }
     } catch (err: any) {
@@ -116,6 +133,10 @@ export default function ReviewsPage() {
       setUser(null)
       setReviews([])
       setSelectedReviewerName(null)
+      // Only clear remembered email if user explicitly unchecked "remember me"
+      if (!rememberMe) {
+        localStorage.removeItem('plotter_remembered_email')
+      }
     } catch (err) {
       console.error(err)
     }
@@ -235,16 +256,47 @@ export default function ReviewsPage() {
               className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
               style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
             >
-              <Key className="w-4 h-4 text-[var(--plotter-muted)]" />
+              <Key className="w-4 h-4 text-[var(--plotter-muted)] flex-shrink-0" />
               <input 
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 placeholder="Tu contraseña"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full bg-transparent border-none text-[var(--plotter-white)] placeholder-[var(--plotter-muted)] focus:outline-none text-xs font-semibold"
               />
+              {/* Toggle password visibility */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="flex-shrink-0 text-[var(--plotter-muted)] hover:text-[var(--plotter-white)] transition-colors"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword
+                  ? <EyeOff className="w-4 h-4" />
+                  : <Eye className="w-4 h-4" />
+                }
+              </button>
             </div>
+
+            {/* Remember me checkbox */}
+            {!isSignUp && (
+              <label className="flex items-center gap-2.5 cursor-pointer select-none group px-1">
+                <div
+                  onClick={() => setRememberMe(prev => !prev)}
+                  className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                    rememberMe
+                      ? 'bg-[var(--plotter-orange)] border-[var(--plotter-orange)]'
+                      : 'border-white/20 bg-transparent'
+                  }`}
+                >
+                  {rememberMe && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                </div>
+                <span className="text-xs text-[var(--plotter-muted)] group-hover:text-[var(--plotter-white)] transition-colors font-semibold">
+                  Recordar mi sesión
+                </span>
+              </label>
+            )}
 
             {authError && (
               <p className="text-center text-red-400 font-bold text-xs bg-red-950/20 border border-red-500/20 py-2.5 px-4 rounded-xl">
