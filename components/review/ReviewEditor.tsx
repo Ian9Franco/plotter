@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear } from '@/lib/tmdb/types'
@@ -62,6 +63,11 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   const [downloading,  setDownloading]  = useState(false)
   const [generatedImg, setGeneratedImg] = useState<string | null>(null) // holds result base64 to show in modal
   const [isModalOpen,  setIsModalOpen]  = useState(false)
+  const [isMounted,    setIsMounted]    = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false) // Mobile Sidebar Drawer state
 
   const starsContainerRef = useRef<HTMLDivElement>(null)
@@ -328,139 +334,144 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
 
   return (
     <>
-      {/* MOBILE FULL-SCREEN SIDEBAR DRAWER (SLIDE-DOWN / SWIPE-UP TO SAVE) */}
-      <AnimatePresence>
-        {isPreviewOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-start">
-            {/* Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-              onClick={() => setIsPreviewOpen(false)}
-            />
-            
-            {/* Slide-down container */}
-            <motion.div
-              drag="y"
-              dragConstraints={{ top: -400, bottom: 0 }}
-              dragElastic={{ top: 0.1, bottom: 0.2 }}
-              onDragEnd={(e, info) => {
-                // Close if swiped up
-                if (info.offset.y < -85 || info.velocity.y < -250) {
-                  setIsPreviewOpen(false)
-                }
-              }}
-              initial={{ y: '-100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="w-full bg-[#070b12]/98 border-b border-white/10 p-5 rounded-b-[32px] flex flex-col items-center justify-between z-10 shadow-2xl touch-none"
-              style={{ maxHeight: '82vh' }}
-            >
-              {/* Drag Handle Indicator */}
-              <div className="w-12 h-1 bg-white/20 rounded-full mb-3 shrink-0" />
-
-              <div className="w-full flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
-                <span className="font-['Outfit'] font-black text-white text-xs tracking-wider uppercase">Vista Previa</span>
-                <span className="text-[10px] text-[var(--plotter-muted)] font-medium">Desliza hacia arriba para guardar</span>
-                <button 
-                  type="button" 
+      {isMounted && createPortal(
+        <>
+          {/* MOBILE FULL-SCREEN SIDEBAR DRAWER (SLIDE-DOWN / SWIPE-UP TO SAVE) */}
+          <AnimatePresence>
+            {isPreviewOpen && (
+              <div className="fixed inset-0 z-[100] lg:hidden flex flex-col justify-start">
+                {/* Backdrop overlay */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/80 backdrop-blur-md"
                   onClick={() => setIsPreviewOpen(false)}
-                  className="p-1.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white"
+                />
+                
+                {/* Slide-down container */}
+                <motion.div
+                  drag="y"
+                  dragConstraints={{ top: -400, bottom: 0 }}
+                  dragElastic={{ top: 0.1, bottom: 0.2 }}
+                  onDragEnd={(e, info) => {
+                    // Close if swiped up
+                    if (info.offset.y < -85 || info.velocity.y < -250) {
+                      setIsPreviewOpen(false)
+                    }
+                  }}
+                  initial={{ y: '-100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '-100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                  className="w-full bg-[#070b12]/98 border-b border-white/10 p-5 rounded-b-[32px] flex flex-col items-center justify-between z-10 shadow-2xl touch-none"
+                  style={{ maxHeight: '82vh' }}
+                >
+                  {/* Drag Handle Indicator */}
+                  <div className="w-12 h-1 bg-white/20 rounded-full mb-3 shrink-0" />
+
+                  <div className="w-full flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
+                    <span className="font-['Outfit'] font-black text-white text-xs tracking-wider uppercase">Vista Previa</span>
+                    <span className="text-[10px] text-[var(--plotter-muted)] font-medium">Desliza hacia arriba para guardar</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsPreviewOpen(false)}
+                      className="p-1.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white"
+                    >
+                      <X className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 flex items-center justify-center w-full overflow-hidden py-4">
+                    {renderLivePreviewCard('scale-[0.8] origin-center')}
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="w-full py-3 bg-[var(--plotter-orange)] hover:bg-[#d84e1b] text-white font-black rounded-xl text-xs border border-white/10 shrink-0 transition-all mt-2 active:scale-98"
+                  >
+                    Guardar y continuar escribiendo
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* GUARANTEED DOWNLOAD & SAVE DIALOG (MODAL OVERLAY) */}
+          {isModalOpen && generatedImg && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              {/* Backdrop blur close action */}
+              <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
+              
+              <div
+                className="relative w-full max-w-[400px] rounded-3xl p-6 text-center z-10 flex flex-col items-center"
+                style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-4 right-4 p-1.5 rounded-full text-[var(--plotter-muted)] hover:text-white transition-all active:scale-90"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
                 >
                   <X className="w-4.5 h-4.5" />
                 </button>
+
+                <h3 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg mb-2">¡Imagen lista!</h3>
+                
+                {/* Preview image */}
+                <div
+                  className="w-full max-h-[360px] aspect-[9/16] overflow-y-auto rounded-2xl my-4 relative flex justify-center items-center p-1"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+                >
+                  <img
+                    src={generatedImg!}
+                    alt="Plotter Review"
+                    className="max-w-full max-h-full object-contain rounded-xl select-all touch-auto cursor-pointer"
+                  />
+                </div>
+
+                {/* Instructions */}
+                <div
+                  className="p-4 w-full mb-5 text-left text-xs space-y-2 rounded-2xl"
+                  style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
+                >
+                  <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">📱 Para celulares (iPhone/Android):</p>
+                  <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
+                    Mantén presionada la imagen y selecciona <strong className="text-[var(--plotter-white)]">"Guardar imagen"</strong>.
+                  </p>
+                  <div className="w-full h-px" style={{ backgroundColor: 'var(--plotter-border)' }} />
+                  <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">💻 Para computadoras:</p>
+                  <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
+                    Usa el botón de descarga abajo.
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 w-full shrink-0">
+                  <button
+                    type="button"
+                    onClick={forceDownload}
+                    className="flex-1 py-3.5 text-white font-['Outfit'] font-black rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar Directo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="py-3.5 px-5 text-[var(--plotter-white)] font-bold rounded-2xl text-xs active:scale-95 transition-all"
+                    style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                  >
+                    Listo
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex-1 flex items-center justify-center w-full overflow-hidden py-4">
-                {renderLivePreviewCard('scale-[0.8] origin-center')}
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => setIsPreviewOpen(false)}
-                className="w-full py-3 bg-[var(--plotter-orange)] hover:bg-[#d84e1b] text-white font-black rounded-xl text-xs border border-white/10 shrink-0 transition-all mt-2 active:scale-98"
-              >
-                Guardar y continuar escribiendo
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* GUARANTEED DOWNLOAD & SAVE DIALOG (MODAL OVERLAY) */}
-      {isModalOpen && generatedImg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop blur close action */}
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-          
-          <div
-            className="relative w-full max-w-[400px] rounded-3xl p-6 text-center z-10 flex flex-col items-center"
-            style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
-          >
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[var(--plotter-muted)] hover:text-white transition-all active:scale-90"
-              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
-
-            <h3 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg mb-2">¡Imagen lista!</h3>
-            
-            {/* Preview image */}
-            <div
-              className="w-full max-h-[360px] aspect-[9/16] overflow-y-auto rounded-2xl my-4 relative flex justify-center items-center p-1"
-              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-            >
-              <img
-                src={generatedImg!}
-                alt="Plotter Review"
-                className="max-w-full max-h-full object-contain rounded-xl select-all touch-auto cursor-pointer"
-              />
             </div>
-
-            {/* Instructions */}
-            <div
-              className="p-4 w-full mb-5 text-left text-xs space-y-2 rounded-2xl"
-              style={{ boxShadow: 'var(--nm-inset)', backgroundColor: 'var(--plotter-deep, var(--plotter-black))' }}
-            >
-              <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">📱 Para celulares (iPhone/Android):</p>
-              <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
-                Mantén presionada la imagen y selecciona <strong className="text-[var(--plotter-white)]">"Guardar imagen"</strong>.
-              </p>
-              <div className="w-full h-px" style={{ backgroundColor: 'var(--plotter-border)' }} />
-              <p className="text-[var(--plotter-white)] font-bold flex items-center gap-1.5">💻 Para computadoras:</p>
-              <p className="text-[var(--plotter-muted)] leading-relaxed pl-5">
-                Usa el botón de descarga abajo.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 w-full shrink-0">
-              <button
-                type="button"
-                onClick={forceDownload}
-                className="flex-1 py-3.5 text-white font-['Outfit'] font-black rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
-                style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
-              >
-                <Download className="w-4 h-4" />
-                Descargar Directo
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="py-3.5 px-5 text-[var(--plotter-white)] font-bold rounded-2xl text-xs active:scale-95 transition-all"
-                style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
-              >
-                Listo
-              </button>
-            </div>
-          </div>
-        </div>
+          )}
+        </>,
+        document.body
       )}
 
       <div className="px-4 mt-6 pb-20 relative animate-fade-up delay-200">
