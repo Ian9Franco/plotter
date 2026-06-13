@@ -10,6 +10,7 @@ export interface ReviewData {
   bgTexture?: 'cruces' | 'grano' | 'lineas' | 'solido' | 'custom'
   customBgDataUrl?: string | null  // Uploaded image base64
   cardColor?: 'slate' | 'carbon' | 'sunset' | 'forest' | 'wine'
+  bgColor?: 'dark' | 'slate' | 'carbon' | 'sunset' | 'forest' | 'wine'
   descFont?: 'inter' | 'serif' | 'mono' | 'outfit'
 }
 
@@ -177,13 +178,14 @@ function roundRect(
   ctx.closePath()
 }
 
-// ── Background texture ───────────────────────────────────────────
 async function drawBgTexture(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   texture: 'cruces' | 'grano' | 'lineas' | 'solido' | 'custom',
-  customBgImg: HTMLImageElement | null
+  customBgImg: HTMLImageElement | null,
+  bgStartColor: string = '#13161c',
+  bgEndColor: string = '#050608'
 ) {
   if (texture === 'custom' && customBgImg) {
     const imgRatio = customBgImg.width / customBgImg.height
@@ -200,9 +202,8 @@ async function drawBgTexture(
     ctx.drawImage(customBgImg, dx, dy, dw, dh)
   } else {
     const bg = ctx.createLinearGradient(0, 0, 0, h)
-    bg.addColorStop(0, '#13161c')
-    bg.addColorStop(0.5, '#0a0b0f')
-    bg.addColorStop(1, '#050608')
+    bg.addColorStop(0, bgStartColor)
+    bg.addColorStop(1, bgEndColor)
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, w, h)
   }
@@ -304,7 +305,17 @@ export async function generateReviewCanvas(
   }
 
   // 1. Background
-  await drawBgTexture(ctx, w, h, activeTexture, customBgImg)
+  const bgThemeKey = data.bgColor || 'dark'
+  const bgTheme = {
+    dark:   { start: '#13161c', end: '#050608' },
+    slate:  { start: '#2c3347', end: '#161a25' },
+    carbon: { start: '#1b1e27', end: '#0c0e14' },
+    sunset: { start: '#7a290c', end: '#300c01' },
+    forest: { start: '#11261b', end: '#06100b' },
+    wine:   { start: '#311627', end: '#12050f' },
+  }[bgThemeKey] || { start: '#13161c', end: '#050608' }
+
+  await drawBgTexture(ctx, w, h, activeTexture, customBgImg, bgTheme.start, bgTheme.end)
 
   // 2. Load poster via proxy
   const posterImg = await loadProxiedImage(data.posterPath)

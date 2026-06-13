@@ -36,6 +36,15 @@ const CARD_COLORS = [
   { id: 'wine',   label: 'Wine',   bg: 'from-[#592947] to-[#2f1324]', border: 'border-t-white/30 border-l-white/25 border-r-white/10 border-b-white/5', dot: 'bg-[#592947]' },
 ] as const
 
+const BG_COLORS = [
+  { id: 'dark',   label: 'Oscuro', bg: 'from-[#13161c] to-[#050608]', dot: 'bg-[#13161c]' },
+  { id: 'slate',  label: 'Slate',  bg: 'from-[#2c3347] to-[#161a25]', dot: 'bg-[#4a5577]' },
+  { id: 'carbon', label: 'Carbon', bg: 'from-[#1b1e27] to-[#0c0e14]', dot: 'bg-[#252a37]' },
+  { id: 'sunset', label: 'Sunset', bg: 'from-[#7a290c] to-[#300c01]', dot: 'bg-[#e6511b]' },
+  { id: 'forest', label: 'Forest', bg: 'from-[#11261b] to-[#06100b]', dot: 'bg-[#224835]' },
+  { id: 'wine',   label: 'Wine',   bg: 'from-[#311627] to-[#12050f]', dot: 'bg-[#592947]' },
+] as const
+
 const FONTS = [
   { id: 'inter',  label: 'Moderna (Inter)',   class: "font-['Inter']" },
   { id: 'serif',  label: 'Editorial (Serif)', class: "font-serif" },
@@ -58,6 +67,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   const [texture,      setTexture]      = useState<'cruces' | 'grano' | 'lineas' | 'solido' | 'custom'>('cruces')
   const [customBg,     setCustomBg]     = useState<string | null>(null)
   const [cardColor,    setCardColor]    = useState<'slate' | 'carbon' | 'sunset' | 'forest' | 'wine'>('slate')
+  const [bgColor,      setBgColor]      = useState<'dark' | 'slate' | 'carbon' | 'sunset' | 'forest' | 'wine'>('dark')
   const [descFont,     setDescFont]     = useState<'inter' | 'serif' | 'mono' | 'outfit'>('inter')
   
   const [downloading,  setDownloading]  = useState(false)
@@ -99,6 +109,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
       if (event.target?.result) {
         setCustomBg(event.target.result as string)
         setTexture('custom')
+        setIsSaved(false)
       }
     }
     reader.readAsDataURL(file)
@@ -107,6 +118,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   const removeCustomBg = () => {
     setCustomBg(null)
     setTexture('cruces')
+    setIsSaved(false)
   }
 
   const [errorMsg,     setErrorMsg]     = useState<string | null>(null)
@@ -167,6 +179,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         bgTexture: texture,
         customBgDataUrl: customBg,
         cardColor: cardColor,
+        bgColor: bgColor,
         descFont: descFont,
       }, format)
       
@@ -215,6 +228,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
   }
 
   const activeColorTheme = CARD_COLORS.find(c => c.id === cardColor) || CARD_COLORS[0]
+  const activeBgColorTheme = BG_COLORS.find(c => c.id === bgColor) || BG_COLORS[0]
   const activeFontTheme = FONTS.find(f => f.id === descFont) || FONTS[0]
 
   // Render the core card preview element
@@ -227,7 +241,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
           className="absolute inset-0 w-full h-full object-cover z-0"
         />
       ) : (
-        <div className="absolute inset-0 z-0 bg-[#0f1118]" />
+        <div className={`absolute inset-0 z-0 bg-gradient-to-b ${activeBgColorTheme.bg}`} />
       )}
       
       {texture === 'cruces' && (
@@ -584,7 +598,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setDescFont(f.id)}
+                      onClick={() => { setDescFont(f.id); setIsSaved(false); }}
                       className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                       style={descFont === f.id ? {
                         boxShadow: 'var(--nm-glow-orange)',
@@ -672,9 +686,41 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setCardColor(c.id)}
+                      onClick={() => { setCardColor(c.id); setIsSaved(false); }}
                       className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
                       style={cardColor === c.id ? {
+                        boxShadow: 'var(--nm-glow-orange)',
+                        backgroundColor: 'var(--plotter-orange)',
+                        color: 'white',
+                      } : {
+                        boxShadow: 'var(--nm-pill)',
+                        backgroundColor: 'var(--plotter-card)',
+                        color: 'var(--plotter-muted)',
+                      }}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${c.dot} ring-1 ring-white/10`} />
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review Background Colors */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Palette className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
+                  <label className="text-[var(--plotter-muted)] text-[10px] uppercase tracking-wider font-semibold block">
+                    Color de fondo general
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {BG_COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setBgColor(c.id); setIsSaved(false); }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      style={bgColor === c.id ? {
                         boxShadow: 'var(--nm-glow-orange)',
                         backgroundColor: 'var(--plotter-orange)',
                         color: 'white',
@@ -704,7 +750,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setTexture(t.id)}
+                      onClick={() => { setTexture(t.id); setIsSaved(false); }}
                       disabled={texture === 'custom'}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${texture === 'custom' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       style={texture === t.id ? {
@@ -734,7 +780,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                       key={f.id}
                       id={`format-${f.id.replace(':','x')}`}
                       type="button"
-                      onClick={() => setFormat(f.id)}
+                      onClick={() => { setFormat(f.id); setIsSaved(false); }}
                       className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                       style={format === f.id ? {
                         boxShadow: 'var(--nm-glow-orange)',
