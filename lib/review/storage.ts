@@ -122,16 +122,57 @@ export async function syncLocalReviews(userId: string): Promise<{ success: boole
   }
 }
 
-// Fetch all community reviews
+// Fetch all community reviews, joining profile data.
+// Strategy: Try the PostgREST embedded join first. If the FK from
+// reviews.user_id → profiles.id hasn't been added yet (PGRST200),
+// fall back to fetching profiles separately and merging them manually.
 export async function fetchCommunityReviews(): Promise<Review[]> {
   try {
+    // Attempt 1: PostgREST join (works after FK migration is applied in Supabase)
     const { data, error } = await supabase
       .from('reviews')
       .select('*, profiles(display_name, avatar_url)')
       .order('created_at', { ascending: false })
-      
-    if (error) throw error
-    return data || []
+
+    // PGRST200 = no FK relationship found → fall through to manual merge
+    if (error && error.code !== 'PGRST200') throw error
+    if (!error) return data || []
+
+    // Attempt 2: Fetch reviews and profiles independently, then merge
+    console.warn(
+      'fetchCommunityReviews: FK join unavailable (PGRST200). ' +
+      'Run the migration in app/sql/schema.sql to enable it. ' +
+      'Falling back to manual profile merge.'
+    )
+
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (reviewsError) throw reviewsError
+    if (!reviews || reviews.length === 0) return []
+
+    // Collect unique non-null user_ids to fetch profiles for
+    const userIds = [...new Set(reviews.map(r => r.user_id).filter(Boolean))]
+
+    let profilesMap: Record<string, Profile> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .in('id', userIds)
+
+      if (profiles) {
+        profilesMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+      }
+    }
+
+    // Attach profile to each review
+    return reviews.map(review => ({
+      ...review,
+      profiles: review.user_id ? (profilesMap[review.user_id] ?? null) : null
+    }))
   } catch (err) {
     console.error('Error fetching community reviews:', err)
     return []

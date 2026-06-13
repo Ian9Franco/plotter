@@ -1,5 +1,8 @@
 -- Create reviews table
-create table public.reviews (
+-- NOTE: Initial FK references auth.users(id). After running profiles.sql,
+-- run the migration below to re-point the FK to profiles(id) so PostgREST
+-- can resolve the `profiles(...)` join in fetchCommunityReviews.
+create table if not exists public.reviews (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete set null,
   reviewer_name text not null,
@@ -31,6 +34,19 @@ create policy "Allow users to update their own reviews"
 create policy "Allow users to delete their own reviews"
   on public.reviews for delete
   using (auth.uid() = user_id);
+
+
+-- ============================================================
+-- MIGRATION: Re-point FK to profiles so PostgREST can join
+-- Run this once in the Supabase SQL Editor after profiles.sql
+-- has been applied and the profiles table exists.
+-- ============================================================
+--
+-- alter table public.reviews drop constraint if exists reviews_user_id_fkey;
+-- alter table public.reviews
+--   add constraint reviews_user_id_fkey
+--   foreign key (user_id) references public.profiles(id) on delete set null;
+
 
 
 
