@@ -664,7 +664,7 @@ export default function ReviewsPage() {
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-[10px] text-[var(--plotter-muted)] font-bold flex items-center gap-1.5">
                           {review.profiles?.avatar_url && (
-                            <img src={review.profiles.avatar_url} alt={review.profiles.display_name || review.reviewer_name} className="w-4.5 h-4.5 rounded-full object-cover border border-white/10" />
+                            <img src={review.profiles.avatar_url} alt={review.profiles.display_name || review.reviewer_name} className="w-4 h-4 rounded-full object-cover border border-white/10 flex-shrink-0" />
                           )}
                           Por: {review.profiles?.display_name || review.reviewer_name}
                         </span>
