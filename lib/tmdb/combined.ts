@@ -2,10 +2,15 @@
 import { apiFetch } from './client'
 import { getNowPlayingTop } from './movies'
 import { getOnAirTop }      from './tv'
-import type { MediaItem } from './types'
+import type { MediaItem, Paged } from './types'
+
+export async function searchAllPage(query: string, page = 1, signal?: AbortSignal): Promise<Paged<MediaItem>> {
+  return apiFetch<Paged<MediaItem>>('search', { query, type: 'all', page }, { signal })
+}
 
 export async function searchAll(query: string): Promise<MediaItem[]> {
-  return apiFetch<MediaItem[]>('search', { query, type: 'all' })
+  const page = await searchAllPage(query, 1)
+  return page.results
 }
 
 export async function getTrendingAll(): Promise<MediaItem[]> {

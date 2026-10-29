@@ -15,12 +15,12 @@ export function LanguageToggle() {
       onClick={toggleLanguage}
       className="relative px-3 h-8 rounded-full flex items-center justify-center gap-1.5 cursor-pointer select-none transition-all duration-300 focus:outline-none active:scale-95 hover:-translate-y-px"
       style={{ boxShadow: '2px 2px 6px var(--nm-dark), 0 0 12px rgba(244,98,42,0.2)', backgroundColor: 'var(--plotter-card)' }}
-      aria-label="Cambiar idioma de títulos"
-      title={useOriginal ? 'Títulos en Idioma Original' : 'Títulos Traducidos'}
+      aria-label={useOriginal ? 'Mostrando el título original' : 'Mostrando el título en español'}
+      title={useOriginal ? 'Título original' : 'Título en español'}
     >
       <Languages className={`w-3.5 h-3.5 transition-colors ${useOriginal ? 'text-[var(--plotter-orange)]' : 'text-[var(--plotter-muted)]'}`} />
-      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--plotter-white)]">
-        {useOriginal ? 'EN' : 'ES'}
+      <span className="text-[10px] font-bold tracking-wide text-[var(--plotter-white)]">
+        {useOriginal ? 'Título original' : 'Título en español'}
       </span>
     </button>
   )

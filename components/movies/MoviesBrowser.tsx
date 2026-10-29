@@ -1,12 +1,14 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Footer from '@/components/layout/Footer'
 import MediaGrid from '@/components/media/MediaGrid'
 import PagedMediaCarousel from '@/components/media/PagedMediaCarousel'
+import { discoverMoviesPage } from '@/lib/tmdb/movies'
+import { MOVIE_GENRE_MENU, genreIdByLabel } from '@/lib/tmdb/genres'
 import type { Movie } from '@/lib/tmdb/types'
 
 interface MoviesBrowserProps {
@@ -30,23 +32,48 @@ function MoviesBrowserContent({
 }: MoviesBrowserProps) {
   const searchParams = useSearchParams()
   const selectedGenre = searchParams.get('genre') || 'Todo'
+  const genreId = genreIdByLabel(MOVIE_GENRE_MENU, selectedGenre)
+  const [genreMovies, setGenreMovies] = useState<Movie[]>([])
+  const [genrePage, setGenrePage] = useState(1)
+  const [genrePages, setGenrePages] = useState(1)
+  const [genreStatus, setGenreStatus] = useState<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
+  const [genreAttempt, setGenreAttempt] = useState(0)
 
-  const GENRE_MAP: Record<string, number> = {
-    'Acción': 28,
-    'Aventura': 12,
-    'Comedia': 35,
-    'Drama': 18,
-    'Terror': 27,
-    'Ciencia Ficción': 878,
+  useEffect(() => {
+    if (selectedGenre === 'Todo' || genreId == null) return
+    const controller = new AbortController()
+    setGenreStatus('loading')
+    setGenrePage(1)
+    discoverMoviesPage(genreId, 1, controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return
+        setGenreMovies(data.results)
+        setGenrePages(data.total_pages)
+        setGenreStatus(data.results.length === 0 ? 'empty' : 'ready')
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setGenreMovies([])
+        setGenreStatus('error')
+      })
+    return () => controller.abort()
+  }, [genreAttempt, genreId, selectedGenre])
+
+  const loadMoreGenre = async () => {
+    if (genreId == null || genrePage >= genrePages) return
+    const next = genrePage + 1
+    const data = await discoverMoviesPage(genreId, next)
+    setGenreMovies((current) => {
+      const seen = new Set(current.map((movie) => movie.id))
+      return [...current, ...data.results.filter((movie) => !seen.has(movie.id))]
+    })
+    setGenrePage(next)
+    setGenrePages(data.total_pages)
   }
-
-  const filteredMovies = selectedGenre === 'Todo'
-    ? trending
-    : trending.filter((movie) => movie.genre_ids?.includes(GENRE_MAP[selectedGenre]))
 
   return (
     <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
-      <main className="page-content pt-24 max-w-[1400px] mx-auto w-full flex-1">
+      <main className="page-content pt-4 max-w-[1400px] mx-auto w-full flex-1">
         {featured && selectedGenre === 'Todo' && (
           <div className="px-4 mb-6">
             <Link
@@ -106,12 +133,36 @@ function MoviesBrowserContent({
               mode="upcoming"
             />
           </div>
+        ) : genreStatus === 'error' ? (
+          <div className="px-4 py-16 text-center">
+            <p className="text-[var(--plotter-muted)] text-sm">No se pudieron cargar las películas de {selectedGenre}.</p>
+            <button type="button" onClick={() => setGenreAttempt((value) => value + 1)} className="mt-4 px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: 'var(--plotter-orange)' }}>
+              Reintentar
+            </button>
+          </div>
+        ) : genreStatus === 'empty' ? (
+          <div className="px-4 py-16 text-center">
+            <p className="text-[var(--plotter-muted)] text-sm">No hay películas de {selectedGenre} en este listado.</p>
+            <Link href="/movies" className="inline-block mt-4 px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: 'var(--plotter-orange)' }}>
+              Volver a Todo
+            </Link>
+          </div>
         ) : (
-          <MediaGrid
-            items={filteredMovies}
-            title={`Películas de ${selectedGenre}`}
-            columns={3}
-          />
+          <>
+            <MediaGrid
+              items={genreMovies}
+              title={`Películas de ${selectedGenre}`}
+              loading={genreStatus === 'loading'}
+              columns={3}
+            />
+            {genreStatus === 'ready' && genrePage < genrePages && (
+              <div className="flex justify-center py-8">
+                <button type="button" onClick={loadMoreGenre} className="px-5 py-3 rounded-2xl text-sm font-bold text-[var(--plotter-white)] border border-white/10" style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}>
+                  Cargar más
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
       <Footer />

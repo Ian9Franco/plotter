@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Footer from '@/components/layout/Footer'
+import { supabase } from '@/lib/supabase'
 import MovieHero from '@/components/detail/MovieHero'
 import WatchProvidersSection from '@/components/detail/WatchProviders'
 import ReviewEditor from '@/components/review/ReviewEditor'
@@ -19,6 +20,13 @@ interface MovieDetailProps {
 
 export default function MovieDetail({ movie, providers, region, trailer, reviews }: MovieDetailProps) {
   const [showReview, setShowReview] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null))
+  }, [])
+
+  const ownsReview = Boolean(userId && reviews.some((review) => review.user_id === userId))
 
   return (
     <div className="min-h-full flex flex-col bg-[var(--plotter-black)]">
@@ -26,6 +34,7 @@ export default function MovieDetail({ movie, providers, region, trailer, reviews
         <MovieHero
           item={movie}
           trailer={trailer}
+          writeLabel={ownsReview ? 'Editar tu reseña' : 'Mi Reseña'}
           onWriteReview={() => {
             setShowReview(true)
             setTimeout(() => {
@@ -34,7 +43,7 @@ export default function MovieDetail({ movie, providers, region, trailer, reviews
           }}
         />
         <WatchProvidersSection providers={providers} region={region} />
-        <TitleReviews reviews={reviews} />
+        <TitleReviews reviews={reviews} currentUserId={userId} />
         <div id="review-section">
           {showReview && <ReviewEditor item={movie} />}
         </div>
