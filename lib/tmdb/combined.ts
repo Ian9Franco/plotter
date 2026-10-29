@@ -9,7 +9,8 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
 }
 
 export async function getTrendingAll(): Promise<MediaItem[]> {
-  return apiFetch<MediaItem[]>('trending', { type: 'all' }, { revalidate: 3600 })
+  const page = await apiFetch<{ results?: MediaItem[] }>('trending', { type: 'all', page: 1 })
+  return page.results ?? []
 }
 
 // Re-export for convenience when importing from combined

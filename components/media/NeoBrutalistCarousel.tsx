@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getPosterUrl } from '@/lib/tmdb/client'
+import TmdbImage from './TmdbImage'
 import { getTitle } from '@/lib/tmdb/types'
 import { useLanguage } from '@/hooks/useLanguage'
 import { useRouter } from 'next/navigation'
@@ -105,11 +105,12 @@ export default function NeoBrutalistCarousel({ items }: NeoBrutalistCarouselProp
                   
                   {/* Image container */}
                   <div className="w-full flex-1 relative border-[3px] border-black bg-black rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
-                    <img 
-                      src={getPosterUrl(item.poster_path, 'w342')} 
+                    <TmdbImage
+                      path={item.poster_path}
+                      size="w342"
                       alt={getTitle(item, useOriginal)}
-                      className="w-full h-full object-cover"
-                      draggable={false}
+                      className="object-cover"
+                      sizes="240px"
                     />
                   </div>
 

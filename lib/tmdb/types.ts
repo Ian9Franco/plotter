@@ -35,6 +35,12 @@ export interface TVShow {
 
 export type MediaItem = Movie | TVShow
 
+export interface Paged<T> {
+  results: T[]
+  page: number
+  total_pages: number
+}
+
 export interface Genre {
   id: number
   name: string
@@ -47,7 +53,10 @@ export interface WatchProvider {
   display_priority: number
 }
 
+export type WatchRegion = 'AR' | 'US'
+
 export interface WatchProviders {
+  region?: WatchRegion | null
   flatrate?: WatchProvider[]
   rent?: WatchProvider[]
   buy?: WatchProvider[]
@@ -72,6 +81,7 @@ export interface MovieDetails extends Movie {
   budget: number
   revenue: number
   status: string
+  imdb_id?: string | null
   production_countries: { iso_3166_1: string; name: string }[]
   spoken_languages: { iso_639_1: string; name: string }[]
 }
@@ -83,8 +93,16 @@ export interface TVDetails extends TVShow {
   status: string
   number_of_seasons: number
   number_of_episodes: number
+  imdb_id?: string | null
   networks: { id: number; name: string; logo_path: string | null }[]
   created_by: { id: number; name: string }[]
+}
+
+export interface TitleBundle<T> {
+  details: T
+  trailers: Video[]
+  providers: WatchProviders | null
+  region: WatchRegion | null
 }
 
 export type AnyDetails = MovieDetails | TVDetails

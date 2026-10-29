@@ -86,7 +86,8 @@ export async function getTrending(mediaType: "all" | "movie" | "tv" = "all"): Pr
   try {
     const response = await fetch(`/api/tmdb?action=trending&type=${mediaType}`)
     if (!response.ok) throw new Error("Failed to fetch")
-    return await response.json()
+    const data = await response.json()
+    return Array.isArray(data) ? data : (data.results || [])
   } catch (error) {
     console.error("Error fetching trending:", error)
     return []

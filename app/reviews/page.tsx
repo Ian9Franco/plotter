@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { fetchCommunityReviews, syncLocalReviews, deleteReview, fetchUserProfile, type Review, type Profile } from '@/lib/review/storage'
+import { fetchCommunityReviews, fetchUserReviews, deleteReview, fetchUserProfile, type Review, type Profile } from '@/lib/review/storage'
 import { toast } from 'sonner'
 import ProfileSettings from '@/components/profile/ProfileSettings'
 import { AnimatePresence } from 'framer-motion'
@@ -23,7 +23,13 @@ export default function ReviewsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [reviews, setReviews] = useState<Review[]>([])
+  const [mine, setMine] = useState<Review[]>([])
+  const [communityCursor, setCommunityCursor] = useState<string | null>(null)
+  const [mineCursor, setMineCursor] = useState<string | null>(null)
+  const [communityHasMore, setCommunityHasMore] = useState(false)
+  const [mineHasMore, setMineHasMore] = useState(false)
   const [loadingReviews, setLoadingReviews] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [selectedReviewerName, setSelectedReviewerName] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   
@@ -59,7 +65,6 @@ export default function ReviewsPage() {
       setUser(session?.user ?? null)
       setLoadingUser(false)
       if (session?.user) {
-        handlePostAuthSync(session.user.id)
         loadUserProfile(session.user.id)
       }
     })
@@ -68,7 +73,6 @@ export default function ReviewsPage() {
       setUser(session?.user ?? null)
       setLoadingUser(false)
       if (session?.user) {
-        handlePostAuthSync(session.user.id)
         loadUserProfile(session.user.id)
       } else {
         setProfile(null)
@@ -85,11 +89,24 @@ export default function ReviewsPage() {
     }
   }, [user])
 
+  const mergeUnique = (current: Review[], incoming: Review[]) => {
+    const seen = new Set(current.map((review) => review.id))
+    return [...current, ...incoming.filter((review) => review.id && !seen.has(review.id))]
+  }
+
   const loadReviews = async () => {
     setLoadingReviews(true)
     try {
-      const data = await fetchCommunityReviews()
-      setReviews(data)
+      const [community, own] = await Promise.all([
+        fetchCommunityReviews({ limit: 20 }),
+        user ? fetchUserReviews(user.id, { limit: 20 }) : Promise.resolve({ reviews: [], hasMore: false }),
+      ])
+      setReviews(community.reviews)
+      setCommunityHasMore(community.hasMore)
+      setCommunityCursor(community.reviews.at(-1)?.created_at ?? null)
+      setMine(own.reviews)
+      setMineHasMore(own.hasMore)
+      setMineCursor(own.reviews.at(-1)?.created_at ?? null)
     } catch (err) {
       console.error(err)
     } finally {
@@ -97,17 +114,43 @@ export default function ReviewsPage() {
     }
   }
 
-  const handlePostAuthSync = async (userId: string) => {
+  const loadMoreCommunity = async () => {
+    if (!communityHasMore || !communityCursor || loadingMore) return
+    setLoadingMore(true)
     try {
-      const syncRes = await syncLocalReviews(userId)
-      if (syncRes.success && syncRes.count > 0) {
-        toast.success(`¡Sincronizadas ${syncRes.count} reseñas guardadas localmente en tu cuenta!`)
-        loadReviews()
-      }
-    } catch (err) {
-      console.error('Error syncing local reviews:', err)
+      const page = await fetchCommunityReviews({ limit: 20, before: communityCursor })
+      setReviews((current) => mergeUnique(current, page.reviews))
+      setCommunityHasMore(page.hasMore)
+      setCommunityCursor(page.reviews.at(-1)?.created_at ?? communityCursor)
+    } finally {
+      setLoadingMore(false)
     }
   }
+
+  const loadMoreMine = async () => {
+    if (!user || !mineHasMore || !mineCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const page = await fetchUserReviews(user.id, { limit: 20, before: mineCursor })
+      setMine((current) => mergeUnique(current, page.reviews))
+      setMineHasMore(page.hasMore)
+      setMineCursor(page.reviews.at(-1)?.created_at ?? mineCursor)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    const onSynced = (event: Event) => {
+      const count = (event as CustomEvent<number>).detail
+      if (count > 0) {
+        toast.success(`¡Sincronizadas ${count} reseñas guardadas localmente en tu cuenta!`)
+        loadReviews()
+      }
+    }
+    window.addEventListener('plotter-reviews-synced', onSynced)
+    return () => window.removeEventListener('plotter-reviews-synced', onSynced)
+  }, [user])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,6 +194,9 @@ export default function ReviewsPage() {
       setProfile(null)
       setShowProfileEdit(false)
       setReviews([])
+      setMine([])
+      setCommunityHasMore(false)
+      setMineHasMore(false)
       setSelectedReviewerName(null)
       // Only clear remembered email if user explicitly unchecked "remember me"
       if (!rememberMe) {
@@ -171,6 +217,7 @@ export default function ReviewsPage() {
         // Update local state
         const updatedReviews = reviews.filter(r => r.id !== reviewId)
         setReviews(updatedReviews)
+        setMine((current) => current.filter((review) => review.id !== reviewId))
         
         // If current reviewer has no reviews left, exit detailed view
         const currentGroupReviews = updatedReviews.filter(r => r.reviewer_name === selectedReviewerName)
@@ -186,9 +233,20 @@ export default function ReviewsPage() {
     }
   }
 
-  // Group reviews
+  const visibleReviews = (() => {
+    const byId = new Map<string, Review>()
+    for (const review of reviews) {
+      if (review.id) byId.set(review.id, review)
+    }
+    for (const review of mine) {
+      if (review.id) byId.set(review.id, review)
+    }
+    return [...byId.values()]
+  })()
+
+  // Group reviews. The current user's rows come from their own query, not from scanning the feed.
   const groupedReviewers: ReviewerGroup[] = []
-  reviews.forEach(review => {
+  visibleReviews.forEach(review => {
     const displayName = review.profiles?.display_name || review.reviewer_name || 'Anónimo'
     const avatarUrl = review.profiles?.avatar_url || null
 
@@ -505,6 +563,17 @@ export default function ReviewsPage() {
                   ))}
                 </div>
               )}
+              {communityHasMore && (
+                <button
+                  type="button"
+                  onClick={loadMoreCommunity}
+                  disabled={loadingMore}
+                  className="mx-auto mt-2 px-5 py-3 rounded-2xl text-sm font-bold text-[var(--plotter-white)] border border-white/10"
+                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                >
+                  {loadingMore ? 'Cargando…' : 'Cargar más'}
+                </button>
+              )}
             </>
           ) : (
             // VIEW: DETAILED REVIEWER USER FEED
@@ -676,6 +745,17 @@ export default function ReviewsPage() {
                   )
                 })}
               </div>
+              {selectedGroup?.isCurrentUser && mineHasMore && (
+                <button
+                  type="button"
+                  onClick={loadMoreMine}
+                  disabled={loadingMore}
+                  className="mx-auto px-5 py-3 rounded-2xl text-sm font-bold text-[var(--plotter-white)] border border-white/10"
+                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                >
+                  {loadingMore ? 'Cargando…' : 'Cargar más de mis reseñas'}
+                </button>
+              )}
             </div>
           )}
 

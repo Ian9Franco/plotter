@@ -7,6 +7,7 @@ import PageTransition from '@/components/layout/PageTransition'
 import Navbar from '@/components/layout/Navbar'
 import MobileNav from '@/components/layout/MobileNav'
 import { Suspense } from 'react'
+import ReviewSync from '@/components/review/ReviewSync'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${outfit.variable} h-full overflow-hidden`}>
       <body className="font-sans antialiased bg-[var(--plotter-body-bg)] h-full overflow-hidden p-3 md:p-5 flex flex-col justify-stretch">
         <ThemeProvider attribute="data-theme" defaultTheme="coffee" themes={['modern', 'coffee']}>
+          <ReviewSync />
           <div 
             className="flex-1 flex flex-col w-full max-w-[1440px] mx-auto rounded-[24px] md:rounded-[36px] border border-[var(--plotter-border)] bg-[var(--plotter-black)] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.65)] relative overflow-hidden h-full"
             style={{ transform: 'translate3d(0, 0, 0)' }}

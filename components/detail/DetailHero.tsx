@@ -4,18 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getBackdropUrl, getPosterUrl } from '@/lib/tmdb/client'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
-import { getMovieVideos } from '@/lib/tmdb/movies'
-import { getTVVideos } from '@/lib/tmdb/tv'
 import type { MovieDetails, TVDetails, Video } from '@/lib/tmdb/types'
 import { Star, CalendarDays, Clock, Play, Award, Pencil, X, Film, Tv, Layers, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/hooks/useLanguage'
 
 interface DetailHeroProps {
   item: MovieDetails | TVDetails
+  trailer?: Video | null
   onWriteReview: () => void
 }
 
-export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
+export default function DetailHero({ item, trailer = null, onWriteReview }: DetailHeroProps) {
   const router = useRouter()
   const { useOriginal } = useLanguage()
   const title = getTitle(item, useOriginal)
@@ -24,9 +23,7 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
   const posterUrl = getPosterUrl(item.poster_path, 'w342')
   const movie = isMovie(item)
 
-  const imdbId = movie
-    ? (item as any).imdb_id
-    : (item as any).external_ids?.imdb_id
+  const imdbId = item.imdb_id
 
   const [omdbRatings, setOmdbRatings] = useState<{
     rottenTomatoes: string | null
@@ -34,18 +31,7 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
     metacritic: string | null
   } | null>(null)
   const [omdbLoading, setOmdbLoading] = useState(false)
-  const [trailer, setTrailer] = useState<Video | null>(null)
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(false)
-
-  useEffect(() => {
-    async function loadTrailer() {
-      try {
-        const videos = movie ? await getMovieVideos(item.id) : await getTVVideos(item.id)
-        if (videos && videos.length > 0) setTrailer(videos[0])
-      } catch (e) { console.error(e) }
-    }
-    loadTrailer()
-  }, [item.id, movie])
 
   useEffect(() => {
     if (!imdbId) return
@@ -53,7 +39,11 @@ export default function DetailHero({ item, onWriteReview }: DetailHeroProps) {
       setOmdbLoading(true)
       try {
         const res = await fetch(`/api/omdb?imdbId=${imdbId}`)
-        if (res.ok) setOmdbRatings(await res.json())
+        if (res.status === 204) return
+        if (res.ok) {
+          const data = await res.json()
+          if (data && (data.rottenTomatoes || data.imdb || data.metacritic)) setOmdbRatings(data)
+        }
       } catch (err) { console.error('Error loading OMDb ratings:', err) }
       finally { setOmdbLoading(false) }
     }
