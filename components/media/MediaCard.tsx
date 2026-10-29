@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getPosterUrl, getBackdropUrl } from '@/lib/tmdb/client'
+import TmdbImage from './TmdbImage'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import type { MediaItem } from '@/lib/tmdb/types'
 import { Ticket, Calendar, Tv } from 'lucide-react'
@@ -24,8 +24,6 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
 
   const title     = getTitle(item, useOriginal)
   const year      = getReleaseYear(item)
-  const posterUrl = getPosterUrl(item.poster_path, 'w342')
-  const backdropUrl = getBackdropUrl(item.backdrop_path, 'w780')
   const type      = isMovie(item) && !('first_air_date' in item) ? 'movie' : 'tv'
   const rating    = item.vote_average.toFixed(1)
 
@@ -84,7 +82,7 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
       setOmdbLoading(true)
       setHasFetched(true)
       fetch(`/api/omdb?tmdbId=${item.id}&type=${type}`)
-        .then(res => res.json())
+        .then(res => (res.status === 204 ? null : res.json()))
         .then(data => {
           if (data && !data.error) {
             setOmdbRatings(data)
@@ -171,15 +169,15 @@ export default function MediaCard({ item, priority = false, variant = 'default' 
           </div>
         )}
 
-        {/* Poster image */}
-        <img
-          src={variant === 'wide' && backdropUrl ? backdropUrl : posterUrl}
+        <TmdbImage
+          path={variant === 'wide' ? (item.backdrop_path || item.poster_path) : item.poster_path}
+          size={variant === 'wide' ? 'w780' : 'w342'}
           alt={`Póster de ${title}`}
-          className={`w-full h-full object-cover transition-transform duration-700 ${
-            isActive ? "scale-110" : "group-hover:scale-110"
+          priority={priority}
+          sizes={variant === 'wide' ? '(max-width: 640px) 80vw, 340px' : '(max-width: 640px) 45vw, 220px'}
+          className={`object-cover transition-transform duration-700 ${
+            isActive ? 'scale-110' : 'group-hover:scale-110'
           }`}
-          loading={priority ? 'eager' : 'lazy'}
-          onError={e => { (e.target as HTMLImageElement).src = '/placeholder-poster.svg' }}
         />
 
         {/* Permanent dark gradient for immersive text readability */}

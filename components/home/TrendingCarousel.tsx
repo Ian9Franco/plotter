@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItem } from '@/lib/tmdb/types'
-import { getPosterUrl } from '@/lib/tmdb/client'
+import TmdbImage from '@/components/media/TmdbImage'
 import { getTitle, getReleaseYear, isMovie } from '@/lib/tmdb/types'
 import { useRouter } from 'next/navigation'
 import HeroBanner from './HeroBanner'
@@ -65,7 +65,7 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
     if (omdbScores[activeItem.id] !== undefined) return
 
     fetch(`/api/omdb?tmdbId=${activeItem.id}&type=${activeType}`)
-      .then(res => res.json())
+      .then(res => (res.status === 204 ? null : res.json()))
       .then(data => {
         if (data && data.rottenTomatoes) {
           setOmdbScores(prev => ({ ...prev, [activeItem.id]: data.rottenTomatoes }))
@@ -137,11 +137,12 @@ export default function TrendingCarousel({ movies, tv }: TrendingCarouselProps) 
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 >
                   <div className="w-full h-full relative">
-                    <img
-                      src={getPosterUrl(item.poster_path, 'w500')}
+                    <TmdbImage
+                      path={item.poster_path}
+                      size="w342"
                       alt={getTitle(item, useOriginal)}
-                      className="w-full h-full object-cover pointer-events-none"
-                      draggable={false}
+                      className="object-cover pointer-events-none"
+                      sizes="280px"
                     />
                     {/* Permanent dark gradient for text legibility */}
                     <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />

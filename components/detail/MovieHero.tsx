@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getBackdropUrl, getPosterUrl } from '@/lib/tmdb/client'
-import { getMovieVideos } from '@/lib/tmdb/movies'
 import type { MovieDetails, Video } from '@/lib/tmdb/types'
 import { Star, Clock, Play, Pencil, Film, CalendarDays, X, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/hooks/useLanguage'
 
 interface MovieHeroProps {
   item: MovieDetails
+  trailer?: Video | null
   onWriteReview: () => void
 }
 
-export default function MovieHero({ item, onWriteReview }: MovieHeroProps) {
+export default function MovieHero({ item, trailer = null, onWriteReview }: MovieHeroProps) {
   const router = useRouter()
   const { useOriginal } = useLanguage()
   const title = useOriginal ? (item.original_title || item.title || '') : (item.title || item.original_title || '')
@@ -27,18 +27,7 @@ export default function MovieHero({ item, onWriteReview }: MovieHeroProps) {
   const voteCount = item.vote_count || 0
   const ratingPercent = Math.round((ratingValue / 10) * 100)
 
-  const [trailer, setTrailer] = useState<Video | null>(null)
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(false)
-
-  useEffect(() => {
-    async function loadTrailer() {
-      try {
-        const videos = await getMovieVideos(item.id)
-        if (videos && videos.length > 0) setTrailer(videos[0])
-      } catch (e) { console.error(e) }
-    }
-    loadTrailer()
-  }, [item.id])
 
   return (
     <div className="relative w-full text-[var(--plotter-white)] overflow-hidden pb-10">

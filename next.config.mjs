@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['image.tmdb.org'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'image.tmdb.org', pathname: '/t/p/**' },
+    ],
   },
-  // Allow TMDB images via standard img tags
   async headers() {
     return [
       {

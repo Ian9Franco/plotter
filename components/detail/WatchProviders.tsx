@@ -1,14 +1,20 @@
 'use client'
 
 import { getLogoUrl } from '@/lib/tmdb/client'
-import type { WatchProviders } from '@/lib/tmdb/types'
+import type { WatchProviders, WatchRegion } from '@/lib/tmdb/types'
 import { Tv } from 'lucide-react'
 
 interface WatchProvidersProps {
   providers: WatchProviders | null
+  region?: WatchRegion | null
 }
 
-export default function WatchProvidersSection({ providers }: WatchProvidersProps) {
+const REGION_LABEL: Record<WatchRegion, string> = {
+  AR: 'Argentina',
+  US: 'Estados Unidos',
+}
+
+export default function WatchProvidersSection({ providers, region }: WatchProvidersProps) {
   if (!providers) return null
 
   const flatrate = providers.flatrate || []
@@ -22,7 +28,9 @@ export default function WatchProvidersSection({ providers }: WatchProvidersProps
       <div className="glass-card rounded-[var(--radius-lg)] p-4">
         <div className="flex items-center gap-2 mb-4">
           <Tv className="w-4 h-4 text-[var(--plotter-green)]" />
-          <h2 className="font-['Outfit'] font-bold text-sm text-[var(--plotter-white)]">Dónde ver</h2>
+          <h2 className="font-['Outfit'] font-bold text-sm text-[var(--plotter-white)]">
+            Dónde ver{region ? ` · ${REGION_LABEL[region]}` : ''}
+          </h2>
         </div>
 
         {flatrate.length > 0 && (

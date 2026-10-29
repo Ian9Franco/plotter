@@ -52,7 +52,7 @@ export default function HeroBanner({ item }: HeroBannerProps) {
     setOmdbLoading(true)
     const type = isM ? 'movie' : 'tv'
     fetch(`/api/omdb?tmdbId=${item.id}&type=${type}`)
-      .then(res => res.json())
+      .then(res => (res.status === 204 ? null : res.json()))
       .then(data => {
         if (mounted && data && !data.error) {
           setOmdb({ imdb: data.imdb, metacritic: data.metacritic })

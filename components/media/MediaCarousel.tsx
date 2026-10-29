@@ -9,9 +9,11 @@ interface MediaCarouselProps {
   items: MediaItem[]
   title: string
   variant?: 'default' | 'wide'
+  hasMore?: boolean
+  onNearEnd?: () => void
 }
 
-export default function MediaCarousel({ items, title, variant = 'default' }: MediaCarouselProps) {
+export default function MediaCarousel({ items, title, variant = 'default', hasMore = false, onNearEnd }: MediaCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(true)
@@ -19,9 +21,10 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
   const dragDistance = useRef(0)
+  const onNearEndRef = useRef(onNearEnd)
+  onNearEndRef.current = onNearEnd
 
-  // Max 15 items
-  const carouselItems = items.slice(0, 15)
+  const carouselItems = items
 
   const checkScrollLimits = () => {
     const container = containerRef.current
@@ -65,17 +68,30 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
     }
   }
 
-  const handleNext = useCallback(() => {
+  const requestNextPage = useCallback(() => {
+    const container = containerRef.current
+    if (!container || !onNearEndRef.current) return
+    const { scrollLeft, scrollWidth, clientWidth } = container
+    if (scrollWidth <= clientWidth + 8) return
+    if (scrollLeft + clientWidth >= scrollWidth - 48) onNearEndRef.current()
+  }, [])
+
+  const handleNext = useCallback((fromUser = false) => {
     const container = containerRef.current
     if (container) {
       const { scrollLeft, scrollWidth, clientWidth } = container
-      if (scrollLeft + clientWidth >= scrollWidth - 25) {
+      const atEnd = scrollLeft + clientWidth >= scrollWidth - 25
+      if (atEnd && hasMore && fromUser) {
+        onNearEndRef.current?.()
+        return
+      }
+      if (atEnd) {
         container.scrollTo({ left: 0, behavior: 'smooth' })
       } else {
         container.scrollBy({ left: clientWidth * 0.75, behavior: 'smooth' })
       }
     }
-  }, [])
+  }, [hasMore])
 
   // Autoplay every 10 seconds
   useEffect(() => {
@@ -142,6 +158,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
+          onScroll={requestNextPage}
           onClickCapture={(e) => {
             if (dragDistance.current > 5) {
               e.stopPropagation()
@@ -168,7 +185,7 @@ export default function MediaCarousel({ items, title, variant = 'default' }: Med
 
         {/* Right Arrow */}
         <button
-          onClick={handleNext}
+          onClick={() => handleNext(true)}
           className={`absolute -right-2 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/10 shadow-2xl transition-all duration-300 transform active:scale-90 cursor-pointer ${
             showRightArrow 
               ? 'opacity-100 scale-100 visible' 

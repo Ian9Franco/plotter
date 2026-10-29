@@ -1,80 +1,49 @@
-'use client'
-
-import { useState, useEffect, Suspense } from 'react'
+import { unstable_noStore as noStore } from 'next/cache'
 import Footer from '@/components/layout/Footer'
+import CatalogUnavailable from '@/components/catalog/CatalogUnavailable'
 import TrendingCarousel from '@/components/home/TrendingCarousel'
-import MediaCarousel from '@/components/media/MediaCarousel'
-import { getTrendingMovies, getUpcomingMovies } from '@/lib/tmdb/movies'
-import { getTrendingTV } from '@/lib/tmdb/tv'
-import type { MediaItem, Movie } from '@/lib/tmdb/types'
+import PagedMediaCarousel from '@/components/media/PagedMediaCarousel'
+import { fetchTrendingMovies, fetchTrendingTV, fetchUpcomingMovies, isReleasedBy, isUpcomingBy, todayISO } from '@/lib/tmdb/catalog'
 
-let cachedTrendingMovies: MediaItem[] | null = null
-let cachedTrendingTV: MediaItem[] | null = null
-let cachedUpcomingMovies: Movie[] | null = null
+export const revalidate = 3600
 
-export default function HomePage() {
-  const [trendingMovies, setTrendingMovies] = useState<MediaItem[]>(cachedTrendingMovies || [])
-  const [trendingTV, setTrendingTV] = useState<MediaItem[]>(cachedTrendingTV || [])
-  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>(cachedUpcomingMovies || [])
-  const [loading,   setLoading]   = useState(!cachedTrendingMovies)
+export default async function HomePage() {
+  const today = todayISO()
 
-  useEffect(() => {
-    if (cachedTrendingMovies && cachedTrendingTV && cachedUpcomingMovies) {
-      return
-    }
+  try {
+    const [moviesPage, tvPage, upcomingPage] = await Promise.all([
+      fetchTrendingMovies(1),
+      fetchTrendingTV(1),
+      fetchUpcomingMovies(1),
+    ])
 
-    async function load() {
-      setLoading(true)
-      try {
-        const [moviesData, tvData, upcomingData] = await Promise.all([
-          getTrendingMovies(),
-          getTrendingTV(),
-          getUpcomingMovies(),
-        ])
+    const trendingMovies = moviesPage.results.filter((movie) => isReleasedBy(movie.release_date, today))
+    const trendingTV = tvPage.results.filter((show) => isReleasedBy(show.first_air_date, today))
+    const upcomingMovies = upcomingPage.results.filter((movie) => isUpcomingBy(movie.release_date, today))
 
-        const todayStr = new Date().toISOString().split('T')[0]
-        const releasedMovies = moviesData.filter(m => !m.release_date || m.release_date <= todayStr)
-        const releasedTV = tvData.filter(t => !t.first_air_date || t.first_air_date <= todayStr)
-        const strictlyUpcoming = upcomingData.filter(m => m.release_date && m.release_date > todayStr)
-
-        cachedTrendingMovies = releasedMovies
-        cachedTrendingTV = releasedTV
-        cachedUpcomingMovies = strictlyUpcoming
-
-        setTrendingMovies(releasedMovies)
-        setTrendingTV(releasedTV)
-        setUpcomingMovies(strictlyUpcoming)
-      } catch (err) {
-        console.error('Error loading home:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
-
-  return (
-    <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
-
-      <main className="page-content w-full">
-        {/* Trending 3D Carousel */}
-        {!loading && (
-          <Suspense fallback={<div className="h-[480px]" />}>
-            <TrendingCarousel movies={trendingMovies} tv={trendingTV} />
-          </Suspense>
-        )}
-
-        {/* Upcoming Section */}
-        {!loading && upcomingMovies.length > 0 && (
-          <div className="max-w-[1400px] mx-auto px-6 pb-24 mt-16 pointer-events-auto relative z-20">
-            <Suspense fallback={<div className="h-[300px] skeleton rounded-2xl" />}>
-              <MediaCarousel items={upcomingMovies} title="Próximos Estrenos" variant="wide" />
-            </Suspense>
-          </div>
-        )}
-      </main>
-
-      <Footer />
-    </div>
-  )
+    return (
+      <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
+        <main className="page-content w-full">
+          <TrendingCarousel movies={trendingMovies} tv={trendingTV} />
+          {upcomingMovies.length > 0 && (
+            <div className="max-w-[1400px] mx-auto px-6 pb-24 mt-16 pointer-events-auto relative z-20">
+              <PagedMediaCarousel
+                initialItems={upcomingMovies}
+                totalPages={upcomingPage.total_pages}
+                title="Próximos Estrenos"
+                action="upcoming"
+                variant="wide"
+                mode="upcoming"
+              />
+            </div>
+          )}
+        </main>
+        <Footer />
+      </div>
+    )
+  } catch (err) {
+    console.error('Error loading home:', err)
+    noStore()
+    return <CatalogUnavailable label="el inicio" />
+  }
 }

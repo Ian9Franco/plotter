@@ -160,12 +160,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         rating,
         review_text: reviewText.trim(),
         description: item.overview || '',
-        poster_path: item.poster_path || null
+        poster_path: item.poster_path || null,
+        tmdb_id: item.id,
+        media_type: 'title' in item ? 'movie' : 'tv',
       })
 
       if (saveRes.success) {
         setIsSaved(true)
-        if (saveRes.storage === 'cloud') {
+        if (saveRes.updated) {
+          toast.success('Actualizamos tu reseña de este título')
+        } else if (saveRes.storage === 'cloud') {
           toast.success('Reseña compartida con la comunidad')
         } else {
           toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
@@ -215,12 +219,16 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
           rating,
           review_text: reviewText.trim(),
           description: item.overview || '',
-          poster_path: item.poster_path || null
+          poster_path: item.poster_path || null,
+          tmdb_id: item.id,
+          media_type: 'title' in item ? 'movie' : 'tv',
         })
 
         if (saveRes.success) {
           setIsSaved(true)
-          if (saveRes.storage === 'cloud') {
+          if (saveRes.updated) {
+            toast.success('Actualizamos tu reseña de este título')
+          } else if (saveRes.storage === 'cloud') {
             toast.success('Reseña compartida con la comunidad')
           } else {
             toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
@@ -876,6 +884,9 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                   <>publicar reseña</>
                 )}
               </button>
+              <p className="text-[10px] text-[var(--plotter-muted)] text-center leading-relaxed">
+                Si ya reseñaste este título, publicar actualiza esa reseña.
+              </p>
             </div>
 
             {errorMsg && (
