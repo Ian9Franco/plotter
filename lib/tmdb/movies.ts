@@ -32,8 +32,17 @@ export async function getNowPlayingMovies(): Promise<Movie[]> {
   return page.results
 }
 
+export async function searchMoviesPage(query: string, page = 1, signal?: AbortSignal): Promise<Paged<Movie>> {
+  return apiFetch<Paged<Movie>>('search', { query, type: 'movie', page }, { signal })
+}
+
 export async function searchMovies(query: string): Promise<Movie[]> {
-  return apiFetch<Movie[]>('search', { query, type: 'movie' })
+  const page = await searchMoviesPage(query, 1)
+  return page.results
+}
+
+export async function discoverMoviesPage(genreId: number, page = 1, signal?: AbortSignal): Promise<Paged<Movie>> {
+  return apiFetch<Paged<Movie>>('discover-movies', { genreId, page }, { signal })
 }
 
 export async function getMovieTitle(id: number): Promise<TitleBundle<MovieDetails>> {

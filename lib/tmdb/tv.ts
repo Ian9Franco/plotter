@@ -23,12 +23,22 @@ export async function getOnAirTV(): Promise<TVShow[]> {
   return page.results
 }
 
+export async function discoverTVPage(genreId: number, page = 1, signal?: AbortSignal): Promise<Paged<TVShow>> {
+  return apiFetch<Paged<TVShow>>('discover-tv', { genreId, page }, { signal })
+}
+
 export async function discoverTV(genreId: number): Promise<TVShow[]> {
-  return apiFetch<TVShow[]>('discover-tv', { genreId })
+  const page = await discoverTVPage(genreId, 1)
+  return page.results
+}
+
+export async function searchTVPage(query: string, page = 1, signal?: AbortSignal): Promise<Paged<TVShow>> {
+  return apiFetch<Paged<TVShow>>('search', { query, type: 'tv', page }, { signal })
 }
 
 export async function searchTV(query: string): Promise<TVShow[]> {
-  return apiFetch<TVShow[]>('search', { query, type: 'tv' })
+  const page = await searchTVPage(query, 1)
+  return page.results
 }
 
 export async function getTVTitle(id: number): Promise<TitleBundle<TVDetails>> {

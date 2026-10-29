@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import Footer from '@/components/layout/Footer'
 import CatalogUnavailable from '@/components/catalog/CatalogUnavailable'
+import HomeAction from '@/components/home/HomeAction'
 import TrendingCarousel from '@/components/home/TrendingCarousel'
 import PagedMediaCarousel from '@/components/media/PagedMediaCarousel'
 import { fetchTrendingMovies, fetchTrendingTV, fetchUpcomingMovies, isReleasedBy, isUpcomingBy, todayISO } from '@/lib/tmdb/catalog'
@@ -24,6 +25,7 @@ export default async function HomePage() {
     return (
       <div className="min-h-full bg-[var(--plotter-black)] flex flex-col">
         <main className="page-content w-full">
+          <HomeAction />
           <TrendingCarousel movies={trendingMovies} tv={trendingTV} />
           {upcomingMovies.length > 0 && (
             <div className="max-w-[1400px] mx-auto px-6 pb-24 mt-16 pointer-events-auto relative z-20">
@@ -44,6 +46,11 @@ export default async function HomePage() {
   } catch (err) {
     console.error('Error loading home:', err)
     noStore()
-    return <CatalogUnavailable label="el inicio" />
+    return (
+      <div className="min-h-full bg-[var(--plotter-black)]">
+        <HomeAction />
+        <CatalogUnavailable label="el inicio" />
+      </div>
+    )
   }
 }

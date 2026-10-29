@@ -41,8 +41,6 @@ export const viewport: Viewport = {
   themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 }
 
 export default function RootLayout({
@@ -50,18 +48,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={`${inter.variable} ${outfit.variable} h-full overflow-hidden`}>
-      <body className="font-sans antialiased bg-[var(--plotter-body-bg)] h-full overflow-hidden p-3 md:p-5 flex flex-col justify-stretch">
+      <body className="font-sans antialiased bg-[var(--plotter-black)] md:bg-[var(--plotter-body-bg)] h-full overflow-hidden p-0 md:p-5 flex flex-col justify-stretch">
         <ThemeProvider attribute="data-theme" defaultTheme="coffee" themes={['modern', 'coffee']}>
           <ReviewSync />
           <div 
-            className="flex-1 flex flex-col w-full max-w-[1440px] mx-auto rounded-[24px] md:rounded-[36px] border border-[var(--plotter-border)] bg-[var(--plotter-black)] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.65)] relative overflow-hidden h-full"
+            className="flex-1 flex flex-col w-full max-w-[1440px] mx-auto rounded-none md:rounded-[36px] border-0 md:border md:border-[var(--plotter-border)] bg-[var(--plotter-black)] shadow-none md:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.65)] relative overflow-hidden h-full"
             style={{ transform: 'translate3d(0, 0, 0)' }}
           >
-              <Suspense fallback={<div className="h-20" />}>
-                <Navbar />
-              </Suspense>
-              
-              <div className="flex-1 relative w-full overflow-hidden">
+              <div id="app-scroll" className="flex-1 relative w-full overflow-y-auto overflow-x-hidden">
+                <Suspense fallback={<div className="h-14" />}>
+                  <Navbar />
+                </Suspense>
                 <PageTransition>
                   {children}
                 </PageTransition>

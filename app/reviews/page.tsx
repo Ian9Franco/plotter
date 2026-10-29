@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Star, LogOut, Database, Lock, Mail, Key, User, PlusCircle, Loader2, ArrowLeft, Trash2, ChevronRight, MessageSquare, Check, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fetchCommunityReviews, fetchUserReviews, deleteReview, fetchUserProfile, type Review, type Profile } from '@/lib/review/storage'
 import { toast } from 'sonner'
-import ProfileSettings from '@/components/profile/ProfileSettings'
-import { AnimatePresence } from 'framer-motion'
 import { getPosterUrl } from '@/lib/tmdb/client'
 
 interface ReviewerGroup {
@@ -21,7 +20,6 @@ export default function ReviewsPage() {
   const [user, setUser] = useState<any>(null)
   const [loadingUser, setLoadingUser] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [reviews, setReviews] = useState<Review[]>([])
   const [mine, setMine] = useState<Review[]>([])
   const [communityCursor, setCommunityCursor] = useState<string | null>(null)
@@ -41,6 +39,7 @@ export default function ReviewsPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [showAuth, setShowAuth] = useState(false)
 
   // Restore remembered email from localStorage on mount
   useEffect(() => {
@@ -82,11 +81,15 @@ export default function ReviewsPage() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Fetch reviews whenever user signs in or community updates
   useEffect(() => {
-    if (user) {
-      loadReviews()
+    if (new URLSearchParams(window.location.search).get('entrar') === '1') {
+      setShowAuth(true)
     }
+  }, [])
+
+  // The feed is public. The user id only adds "mis reseñas".
+  useEffect(() => {
+    loadReviews()
   }, [user])
 
   const mergeUnique = (current: Review[], incoming: Review[]) => {
@@ -192,7 +195,6 @@ export default function ReviewsPage() {
       toast.success('Sesión cerrada')
       setUser(null)
       setProfile(null)
-      setShowProfileEdit(false)
       setReviews([])
       setMine([])
       setCommunityHasMore(false)
@@ -225,7 +227,10 @@ export default function ReviewsPage() {
           setSelectedReviewerName(null)
         }
       } else {
-        toast.error('Error al eliminar la reseña')
+        const message = res.error && typeof res.error === 'object' && 'message' in res.error
+          ? String((res.error as { message?: string }).message)
+          : 'No se pudo borrar la reseña'
+        toast.error(message || 'No se pudo borrar la reseña')
       }
     } catch (err) {
       console.error(err)
@@ -287,21 +292,14 @@ export default function ReviewsPage() {
     ? groupedReviewers.find(g => g.name.toLowerCase() === selectedReviewerName.toLowerCase())
     : null
 
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen pt-32 pb-32 flex flex-col items-center justify-center bg-[var(--plotter-black)]">
-        <Loader2 className="w-10 h-10 text-[var(--plotter-orange)] animate-spin" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen pt-24 px-5 pb-32 flex flex-col items-center bg-[var(--plotter-black)]">
+    <div className="min-h-screen pt-6 px-5 pb-32 flex flex-col items-center bg-[var(--plotter-black)]">
       
-      {!user ? (
+      {showAuth && (
         // AUTHENTICATION COMPONENT
+        <div className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4">
         <div 
-          className="p-8 rounded-[32px] max-w-md w-full flex flex-col items-center gap-5 transition-all duration-300 animate-fade-in mt-10"
+          className="p-8 rounded-[32px] max-w-md w-full flex flex-col items-center gap-5 transition-all duration-300 animate-fade-in"
           style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
         >
           <div 
@@ -316,7 +314,7 @@ export default function ReviewsPage() {
               {isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
             </h1>
             <p className="text-[var(--plotter-muted)] text-xs mt-1 px-4">
-              Para ver y compartir reseñas en la comunidad, por favor iniciá sesión.
+              La cuenta hace falta para publicar, borrar lo tuyo y editar el perfil. El feed se lee sin entrar.
             </p>
           </div>
 
@@ -412,9 +410,16 @@ export default function ReviewsPage() {
           >
             {isSignUp ? '¿Ya tenés cuenta? Iniciá sesión' : '¿No tenés cuenta? Registrate'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowAuth(false)}
+            className="text-xs text-[var(--plotter-muted)] font-semibold"
+          >
+            Cerrar
+          </button>
         </div>
-      ) : (
-        // LOGGED IN: REVIEWS PORTAL
+        </div>
+      )}
         <div className="max-w-4xl w-full flex flex-col gap-8 mt-4 animate-fade-in">
           
           {/* Header Portal Profile Info */}
@@ -435,55 +440,48 @@ export default function ReviewsPage() {
                   )}
                 </div>
                 <div className="text-center sm:text-left">
-                  <p className="text-xs text-[var(--plotter-muted)] font-semibold">Sesión activa</p>
+                  <p className="text-xs text-[var(--plotter-muted)] font-semibold">{user ? 'Sesión activa' : 'Comunidad'}</p>
                   <p className="text-sm font-black text-white font-['Outfit'] truncate max-w-[200px] sm:max-w-xs">
-                    {profile?.display_name || user.email.split('@')[0]}
+                    {user ? (profile?.display_name || user.email.split('@')[0]) : 'Reseñas públicas'}
                   </p>
-                  <p className="text-[10px] text-[var(--plotter-muted)] font-semibold">{user.email}</p>
+                  <p className="text-[10px] text-[var(--plotter-muted)] font-semibold">{user?.email || 'Sin cuenta se puede leer'}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowProfileEdit(!showProfileEdit)}
-                  className={`px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5 ${
-                    showProfileEdit 
-                      ? 'text-[var(--plotter-orange)] border-[var(--plotter-orange)]/35' 
-                      : 'text-[var(--plotter-muted)] hover:text-white'
-                  }`}
-                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
-                >
-                  <User className="w-4 h-4" />
-                  {showProfileEdit ? 'Ver Autores' : 'Editar Perfil'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="px-5 py-3 rounded-2xl text-[var(--plotter-muted)] hover:text-red-400 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5"
-                  style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Cerrar Sesión
-                </button>
+                {user ? (
+                  <>
+                    <Link
+                      href="/perfil"
+                      className="px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5 text-[var(--plotter-muted)] hover:text-white"
+                      style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                    >
+                      <User className="w-4 h-4" />
+                      Editar perfil
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="px-5 py-3 rounded-2xl text-[var(--plotter-muted)] hover:text-red-400 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 border border-white/5"
+                      style={{ boxShadow: 'var(--nm-pill)', backgroundColor: 'var(--plotter-card)' }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Cerrar Sesión
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAuth(true)}
+                    className="px-5 py-3 rounded-2xl font-bold text-xs text-white"
+                    style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
+                  >
+                    Entrar
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Profile settings component shown inline if toggled */}
-            <AnimatePresence>
-              {showProfileEdit && (
-                <ProfileSettings
-                  userId={user.id}
-                  email={user.email}
-                  onClose={() => setShowProfileEdit(false)}
-                  onProfileUpdated={(updatedProfile) => {
-                    setProfile(updatedProfile)
-                    loadReviews()
-                  }}
-                />
-              )}
-            </AnimatePresence>
           </div>
 
           {/* VIEW: MAIN GROUPED FEED */}
@@ -760,7 +758,6 @@ export default function ReviewsPage() {
           )}
 
         </div>
-      )}
       
     </div>
   )

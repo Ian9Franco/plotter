@@ -69,12 +69,16 @@ export async function GET(request: NextRequest) {
         const ep = type === 'movie' ? '/search/movie'
           : type === 'tv' ? '/search/tv'
             : '/search/multi'
-        const data = await tmdbFetch<{ results?: Array<{ media_type?: string }> }>(
-          `${ep}?query=${encodeURIComponent(query)}&language=es-ES&page=1`,
+        const data = await tmdbFetch<{ results?: Array<{ media_type?: string }>; page?: number; total_pages?: number }>(
+          `${ep}?query=${encodeURIComponent(query)}&language=es-ES&page=${page}`,
           60,
         )
         const results = (data.results ?? []).filter((item) => item.media_type !== 'person')
-        return json(results, 200, SEARCH_CACHE)
+        return json({
+          results,
+          page: data.page ?? page,
+          total_pages: data.total_pages ?? 1,
+        }, 200, SEARCH_CACHE)
       }
 
       case 'trending': {
@@ -135,18 +139,26 @@ export async function GET(request: NextRequest) {
 
       case 'discover-movies': {
         if (!genreId) return json({ error: 'genreId required' }, 400, NO_STORE)
-        const data = await tmdbFetch<{ results?: Movie[] }>(
+        const data = await tmdbFetch<{ results?: Movie[]; page?: number; total_pages?: number }>(
           `/discover/movie?with_genres=${encodeURIComponent(genreId)}&language=es-ES&page=${page}&sort_by=popularity.desc`,
         )
-        return json(data.results?.slice(0, 22) ?? [], 200, CATALOG_CACHE)
+        return json({
+          results: data.results ?? [],
+          page: data.page ?? page,
+          total_pages: data.total_pages ?? 1,
+        }, 200, CATALOG_CACHE)
       }
 
       case 'discover-tv': {
         if (!genreId) return json({ error: 'genreId required' }, 400, NO_STORE)
-        const data = await tmdbFetch<{ results?: TVShow[] }>(
+        const data = await tmdbFetch<{ results?: TVShow[]; page?: number; total_pages?: number }>(
           `/discover/tv?with_genres=${encodeURIComponent(genreId)}&language=es-ES&page=${page}&sort_by=popularity.desc`,
         )
-        return json(data.results?.slice(0, 22) ?? [], 200, CATALOG_CACHE)
+        return json({
+          results: data.results ?? [],
+          page: data.page ?? page,
+          total_pages: data.total_pages ?? 1,
+        }, 200, CATALOG_CACHE)
       }
 
       default:
