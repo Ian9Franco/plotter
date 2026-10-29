@@ -98,7 +98,8 @@ export async function searchMulti(query: string, type: "all" | "movie" | "tv" = 
   try {
     const response = await fetch(`/api/tmdb?action=search&query=${encodeURIComponent(query)}&type=${type}`)
     if (!response.ok) throw new Error("Failed to fetch")
-    return await response.json()
+    const data = await response.json()
+    return Array.isArray(data) ? data : (data.results || [])
   } catch (error) {
     console.error("Error searching:", error)
     return []
@@ -109,7 +110,8 @@ export async function discoverMoviesByGenre(genreId: number): Promise<Movie[]> {
   try {
     const response = await fetch(`/api/tmdb?action=discover-movies&genreId=${genreId}`)
     if (!response.ok) throw new Error("Failed to fetch")
-    return await response.json()
+    const data = await response.json()
+    return Array.isArray(data) ? data : (data.results || [])
   } catch (error) {
     console.error("Error discovering movies by genre:", error)
     return []
@@ -120,7 +122,8 @@ export async function discoverTVByGenre(genreId: number): Promise<TVShow[]> {
   try {
     const response = await fetch(`/api/tmdb?action=discover-tv&genreId=${genreId}`)
     if (!response.ok) throw new Error("Failed to fetch")
-    return await response.json()
+    const data = await response.json()
+    return Array.isArray(data) ? data : (data.results || [])
   } catch (error) {
     console.error("Error discovering TV by genre:", error)
     return []

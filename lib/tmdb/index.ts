@@ -1,5 +1,6 @@
 // lib/tmdb/index.ts — Clean barrel with no local imports/logic
 export * from './types'
+export * from './genres'
 export * from './client'
 export * from './movies'
 export * from './tv'

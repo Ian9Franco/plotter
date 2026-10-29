@@ -10,10 +10,11 @@ import { useLanguage } from '@/hooks/useLanguage'
 interface MovieHeroProps {
   item: MovieDetails
   trailer?: Video | null
+  writeLabel?: string
   onWriteReview: () => void
 }
 
-export default function MovieHero({ item, trailer = null, onWriteReview }: MovieHeroProps) {
+export default function MovieHero({ item, trailer = null, writeLabel = 'Mi Reseña', onWriteReview }: MovieHeroProps) {
   const router = useRouter()
   const { useOriginal } = useLanguage()
   const title = useOriginal ? (item.original_title || item.title || '') : (item.title || item.original_title || '')
@@ -146,10 +147,10 @@ export default function MovieHero({ item, trailer = null, onWriteReview }: Movie
                 boxShadow: 'var(--nm-glow-orange)',
                 backgroundColor: 'var(--plotter-orange)',
               }}
-              aria-label="Escribir mi reseña"
+              aria-label={writeLabel}
             >
               <Pencil className="w-3.5 h-3.5" fill="currentColor" />
-              <span className="hidden sm:inline">Mi Reseña</span>
+              <span>{writeLabel}</span>
             </button>
           </div>
         </div>

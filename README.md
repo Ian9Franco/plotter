@@ -41,7 +41,7 @@ El corazón interactivo de Plotter. Incluye un espacio de diseño interactivo do
 * **Filtros por Género en Tiempo Real**: Un menú desplegable neumórfico impecable que permite filtrar al instante el contenido. En la sección de Series, el grid se oculta inteligentemente si está seleccionado "Todo" para favorecer la navegación limpia, y se activa al buscar géneros específicos.
 
 ### 4. Soporte Multilingüe Integrado
-* Gancho de estado global (`useLanguage`) con traducción rápida entre **Español (ES)** e **Inglés (EN)** para títulos, sinopsis y etiquetas clave, persistido dinámicamente.
+* El control "Título original" / "Título en español" alterna el título del catálogo. La interfaz queda en español.
 
 ---
 

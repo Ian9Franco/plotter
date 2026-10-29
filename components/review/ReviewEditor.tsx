@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getPosterUrl } from '@/lib/tmdb/client'
@@ -56,7 +57,9 @@ const FONTS = [
 import { useLanguage } from '@/hooks/useLanguage'
 
 export default function ReviewEditor({ item }: ReviewEditorProps) {
+  const router = useRouter()
   const { useOriginal } = useLanguage()
+  const [step, setStep] = useState<1 | 2>(1)
   const title = getTitle(item, useOriginal)
   const year  = getReleaseYear(item)
 
@@ -172,7 +175,8 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         } else if (saveRes.storage === 'cloud') {
           toast.success('Reseña compartida con la comunidad')
         } else {
-          toast.success('Reseña guardada localmente (iniciá sesión en "Reviews" para subirla)')
+          toast.success('Reseña guardada en este navegador. Entrá para publicarla.')
+          router.push('/reviews?entrar=1')
         }
       } else {
         throw new Error('No se pudo guardar la reseña')
@@ -529,7 +533,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* DESKTOP PERMANENT PREVIEW COLUMN */}
-          <div className="hidden lg:col-span-5 lg:flex flex-col items-center sticky top-24">
+          <div className={`${step === 2 ? 'hidden lg:col-span-5 lg:flex' : 'hidden'} flex-col items-center sticky top-24`}>
             <p className="text-[var(--plotter-muted)] text-[11px] mb-3 uppercase tracking-widest font-bold self-start pl-1">
               Previsualización en tiempo real
             </p>
@@ -538,14 +542,14 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
 
           {/* CONTROLS FORM */}
           <div
-            className="lg:col-span-7 rounded-3xl p-5 lg:p-6 space-y-6"
+            className={`${step === 2 ? 'lg:col-span-7' : 'lg:col-span-12'} rounded-3xl p-5 lg:p-6 space-y-6`}
             style={{ boxShadow: 'var(--nm-raised-lg)', backgroundColor: 'var(--plotter-card)' }}
           >
             
             <div className="flex items-center justify-between pb-3 border-b border-[var(--plotter-border)]">
               <div className="nm-section-title mb-0">
                 <h2 className="font-['Outfit'] font-extrabold text-[var(--plotter-white)] text-lg">
-                  Personaliza tu Review
+                  {step === 1 ? 'Tu reseña' : 'Tarjeta'}
                 </h2>
               </div>
               
@@ -612,7 +616,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                 </div>
               </div>
 
-              {/* Select Font for Description */}
+              {step === 2 && (
               <div>
                 <div className="flex items-center gap-1.5 mb-2.5">
                   <Type className="w-3.5 h-3.5 text-[var(--plotter-orange)]" />
@@ -643,6 +647,7 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Name */}
               <div>
@@ -661,6 +666,8 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               </div>
             </div>
 
+            {step === 2 && (
+            <>
             <div className="w-full h-[1px] bg-[var(--plotter-border)]" />
 
             {/* Style Controls */}
@@ -829,7 +836,6 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               </div>
             </div>
 
-            {/* Mobile Preview Button above Download on mobile */}
             <button
               type="button"
               onClick={() => setIsPreviewOpen(true)}
@@ -840,32 +846,41 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               ver vista previa
             </button>
 
-            {/* Action Trigger Buttons */}
-            <div className="flex flex-col gap-3">
-              <button
-                id="download-review-btn"
-                type="button"
-                onClick={handleGenerate}
-                disabled={downloading || rating === 0}
-                className={`w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 text-white ${
-                  rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
-                }`}
-                style={rating === 0 ? {
-                  boxShadow: 'var(--nm-inset)',
-                  backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
-                  color: 'var(--plotter-muted)',
-                } : {
-                  boxShadow: 'var(--nm-glow-orange)',
-                  backgroundColor: 'var(--plotter-orange)',
-                }}
-              >
-                {downloading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />Generando...</>
-                ) : (
-                  <><Download className="w-4 h-4" />descargar review</>
-                )}
-              </button>
+            <button
+              id="download-review-btn"
+              type="button"
+              onClick={handleGenerate}
+              disabled={downloading || rating === 0}
+              className={`hidden md:flex w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm items-center justify-center gap-2 transition-all duration-300 text-white ${
+                rating === 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
+              }`}
+              style={rating === 0 ? {
+                boxShadow: 'var(--nm-inset)',
+                backgroundColor: 'var(--plotter-deep, var(--plotter-black))',
+                color: 'var(--plotter-muted)',
+              } : {
+                boxShadow: 'var(--nm-glow-orange)',
+                backgroundColor: 'var(--plotter-orange)',
+              }}
+            >
+              {downloading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Generando...</>
+              ) : (
+                <><Download className="w-4 h-4" />descargar review</>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="w-full py-2 text-xs font-bold text-[var(--plotter-muted)]"
+            >
+              Volver a la reseña
+            </button>
+            </>
+            )}
 
+            {step === 1 && (
+            <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={handlePublishOnly}
@@ -887,7 +902,32 @@ export default function ReviewEditor({ item }: ReviewEditorProps) {
               <p className="text-[10px] text-[var(--plotter-muted)] text-center leading-relaxed">
                 Si ya reseñaste este título, publicar actualiza esa reseña.
               </p>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={rating === 0 && !reviewText.trim()}
+                className="w-full py-3.5 rounded-2xl font-['Outfit'] font-black text-sm text-white disabled:opacity-40"
+                style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
+              >
+                Diseñar tarjeta
+              </button>
             </div>
+            )}
+
+            {step === 2 && (
+              <div className="md:hidden fixed bottom-[88px] inset-x-0 z-40 px-4">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={downloading || rating === 0}
+                  className="w-full py-4 rounded-2xl font-['Outfit'] font-black text-sm text-white flex items-center justify-center gap-2"
+                  style={{ boxShadow: 'var(--nm-glow-orange)', backgroundColor: 'var(--plotter-orange)' }}
+                >
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Descargar
+                </button>
+              </div>
+            )}
 
             {errorMsg && (
               <p className="text-center text-red-400 font-bold text-xs bg-red-950/20 border border-red-500/20 py-2.5 px-4 rounded-xl animate-shake mt-2">
