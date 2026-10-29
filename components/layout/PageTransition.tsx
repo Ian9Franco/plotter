@@ -46,7 +46,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
         exit="exit"
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         style={{ willChange: 'transform' }}
-        className="flex-1 overflow-y-auto overflow-x-hidden absolute inset-0 w-full h-full bg-[var(--plotter-black)]"
+        className="relative w-full min-h-full bg-[var(--plotter-black)]"
       >
         {children}
       </motion.div>

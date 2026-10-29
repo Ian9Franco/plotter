@@ -11,10 +11,11 @@ import { useLanguage } from '@/hooks/useLanguage'
 interface DetailHeroProps {
   item: MovieDetails | TVDetails
   trailer?: Video | null
+  writeLabel?: string
   onWriteReview: () => void
 }
 
-export default function DetailHero({ item, trailer = null, onWriteReview }: DetailHeroProps) {
+export default function DetailHero({ item, trailer = null, writeLabel = 'Mi Reseña', onWriteReview }: DetailHeroProps) {
   const router = useRouter()
   const { useOriginal } = useLanguage()
   const title = getTitle(item, useOriginal)
@@ -227,10 +228,10 @@ export default function DetailHero({ item, trailer = null, onWriteReview }: Deta
                 boxShadow: 'var(--nm-glow-orange)',
                 backgroundColor: 'var(--plotter-orange)',
               }}
-              aria-label="Escribir mi reseña"
+              aria-label={writeLabel}
             >
               <Pencil className="w-3 h-3" fill="currentColor" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Reseña</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{writeLabel}</span>
             </button>
           </div>
           <p className="text-[var(--plotter-white)]/85 text-[13px] leading-relaxed font-light">

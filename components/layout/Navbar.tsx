@@ -6,6 +6,8 @@ import { Search, X, ArrowLeft, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { LanguageToggle } from '@/components/layout/LanguageToggle'
+import TitleSuggest from '@/components/search/TitleSuggest'
+import { MOVIE_GENRE_MENU, TV_GENRE_MENU } from '@/lib/tmdb/genres'
 import { AnimatePresence, motion } from 'framer-motion'
 
 export default function Navbar() {
@@ -42,15 +44,21 @@ export default function Navbar() {
     }
   }
 
-  const MOVIE_GENRES = ['Todo', 'Acción', 'Aventura', 'Comedia', 'Drama', 'Terror', 'Ciencia Ficción']
-  const TV_GENRES    = ['Todo', 'Acción y Aventura', 'Animación', 'Comedia', 'Crimen', 'Documental', 'Drama', 'Sci-Fi & Fantasy']
-  const genres = isMoviesPage ? MOVIE_GENRES : isTvPage ? TV_GENRES : []
+  const genres = (isMoviesPage ? MOVIE_GENRE_MENU : isTvPage ? TV_GENRE_MENU : []).map((genre) => genre.label)
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 10)
-    window.addEventListener('scroll', handler, { passive: true })
-    return () => window.removeEventListener('scroll', handler)
+    const scroller = document.getElementById('app-scroll')
+    const handler = () => setScrolled((scroller?.scrollTop ?? window.scrollY) > 10)
+    scroller?.addEventListener('scroll', handler, { passive: true })
+    return () => scroller?.removeEventListener('scroll', handler)
   }, [])
+
+  useEffect(() => {
+    if (pathname === '/search') {
+      setSearchOpen(false)
+      setQuery('')
+    }
+  }, [pathname])
 
   useEffect(() => {
     if (searchOpen) setTimeout(() => inputRef.current?.focus(), 50)
@@ -60,8 +68,6 @@ export default function Navbar() {
     e.preventDefault()
     const q = query.trim()
     if (!q) return
-    setSearchOpen(false)
-    setQuery('')
     router.push(`/search?q=${encodeURIComponent(q)}`)
   }
 
@@ -95,7 +101,7 @@ export default function Navbar() {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-50 transition-all duration-300 safe-top backdrop-blur-xl"
+      className="sticky top-0 z-50 transition-all duration-300 safe-top backdrop-blur-xl"
       style={navbarStyle}
     >
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -204,7 +210,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.97 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-14 left-0 w-full px-4 md:px-6 flex justify-center z-40 pointer-events-auto mt-3"
+            className="absolute top-14 left-0 w-full px-4 md:px-6 flex flex-col items-center z-40 pointer-events-auto mt-3"
           >
             <form
               onSubmit={handleSearch}
@@ -241,6 +247,9 @@ export default function Navbar() {
                 Buscar
               </button>
             </form>
+            <div className="w-full max-w-[600px]">
+              <TitleSuggest query={query} onNavigate={() => setSearchOpen(false)} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

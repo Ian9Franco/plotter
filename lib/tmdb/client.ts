@@ -16,13 +16,14 @@ export class TMDBError extends Error {
 export async function apiFetch<T>(
   action: string,
   params: Record<string, string | number> = {},
+  init: { signal?: AbortSignal } = {},
 ): Promise<T> {
   const searchParams = new URLSearchParams({
     action,
     ...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])),
   })
 
-  const res = await fetch(`/api/tmdb?${searchParams.toString()}`)
+  const res = await fetch(`/api/tmdb?${searchParams.toString()}`, { signal: init.signal })
 
   if (!res.ok) {
     throw new TMDBError(`API error: ${res.status}`, res.status)
